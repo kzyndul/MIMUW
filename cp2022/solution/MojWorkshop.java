@@ -11,7 +11,8 @@ public class MojWorkshop implements Workshop {
 
     private static int czekajacy = 0;
     private final Collection<Workplace> stanowiska;
-    private Semaphore[] tymczasowaNazwa;
+    private Semaphore[] drugaOsoba;
+    private Semaphore[] poUse;
     private long[] zajmowanePrzez;
     private final int N;
 
@@ -20,10 +21,12 @@ public class MojWorkshop implements Workshop {
         assert (stanowiska.size() != 0) : "pusta kolekcja";
         this.stanowiska = stanowiska;
         N = 2 * stanowiska.size();
-        tymczasowaNazwa = new Semaphore[N / 2];
+        drugaOsoba = new Semaphore[N / 2];
+        poUse = new Semaphore[N / 2];
         for (int i = 0; i < N / 2; ++i)
         {
-            tymczasowaNazwa[i] = new Semaphore(1, true);
+            drugaOsoba[i] = new Semaphore(2, true);
+            poUse[i] = new Semaphore(1, true);
         }
         zajmowanePrzez = new long[N / 2];
     }
@@ -33,15 +36,16 @@ public class MojWorkshop implements Workshop {
     {
         Workplace wynik = znajdzStanowisko(wid);
         int i = znajdzIndeks(wid);
-
         try
         {
-            tymczasowaNazwa[i].acquire();
+            poUse[i].acquire();
+            drugaOsoba[i].acquire();
         }
         catch (InterruptedException e)
         {
             throw new RuntimeException(e);
         }
+
         zajmowanePrzez[i] = Thread.currentThread().getId();
         return wynik;
     }
@@ -49,23 +53,24 @@ public class MojWorkshop implements Workshop {
     @Override
     public Workplace switchTo (WorkplaceId wid)
     {
-        int i = znajdzIndeks(wid);
-        if (zajmowanePrzez[i] != 0)
-        {
-            ++czekajacy;
-            System.out.println("CZEKAM");
-        }
-        System.out.println(czekajacy);
+        long help = Thread.currentThread().getId();
+        int i = znajdzWatek(help);
+        zajmowanePrzez[i] = 0;
+        poUse[i].release();
+        int j = znajdzIndeks(wid);
         try
         {
-            tymczasowaNazwa[i].acquire();
+            poUse[j].acquire();
+            drugaOsoba[j].acquire();
         }
         catch (InterruptedException e)
         {
             throw new RuntimeException(e);
         }
-        zajmowanePrzez[i] = Thread.currentThread().getId();
-        return znajdzStanowisko(wid);
+        Workplace wynik = znajdzStanowisko(wid);
+        zajmowanePrzez[j] = help;
+        drugaOsoba[i].release();
+        return wynik;
     }
 
     @Override
@@ -74,7 +79,8 @@ public class MojWorkshop implements Workshop {
         long help = Thread.currentThread().getId();
         int i = znajdzWatek(help);
         zajmowanePrzez[i] = 0;
-        tymczasowaNazwa[i].release();
+        poUse[i].release();
+        drugaOsoba[i].release();
     }
 
     private int znajdzIndeks (WorkplaceId wid)
