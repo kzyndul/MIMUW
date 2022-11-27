@@ -7,6 +7,7 @@ import cp2022.base.Workshop;
 import java.util.Collection;
 import java.util.concurrent.Semaphore;
 
+// JDDJD
 public class MojWorkshop implements Workshop {
 
     private static int czekajacy = 0;
