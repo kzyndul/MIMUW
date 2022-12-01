@@ -4,96 +4,107 @@ import cp2022.base.Workplace;
 import cp2022.base.WorkplaceId;
 import cp2022.base.Workshop;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Queue;
 import java.util.concurrent.Semaphore;
 
 public class MojWorkshop implements Workshop {
 
-    private ArrayList<MojWorkplace> stanowiska = new ArrayList<>();
-    private ArrayList<Integer> czekajacy = new ArrayList<>();
+    private HashMap<WorkplaceId, MojWorkplace> stanowiska_mapa;
+    private HashMap<WorkplaceId, Integer> numerStanowiska;
+    private HashMap<Long, WorkplaceId> zajmowanePrzez_mapa;
+    private HashMap<Long, WorkplaceId> chcePracowac_mapa;
 
     private Semaphore[] poUse;
     private Semaphore[] uzywam;
-    private Semaphore[] swap;
-
-    private long[] zajmowanePrzez;
-    private long[] chcePracowac;
-    private int[] swapNa;
 
     private final int N;
-    private Semaphore czeka;
+
+    private Queue<Long> czekam;
 
 
     public MojWorkshop (Collection<Workplace> stanowiska)
     {
         assert (stanowiska.size() != 0) : "pusta kolekcja";
-        for (Workplace workplace : stanowiska)
-        {
-            MojWorkplace temp = new MojWorkplace(workplace, this);
-            this.stanowiska.add(temp);
-        }
 
+        stanowiska_mapa = new HashMap<>();
+        numerStanowiska = new HashMap<>();
+        zajmowanePrzez_mapa = new HashMap<>();
+        chcePracowac_mapa = new HashMap<>();
 
         N = stanowiska.size();
         poUse = new Semaphore[N];
-        swap = new Semaphore[N];
         uzywam = new Semaphore[N];
-        zajmowanePrzez = new long[N];
-        chcePracowac = new long[N];
 
 
-        for (int i = 0; i < N; ++i)
+        int k =0;
+        for (Workplace workplace : stanowiska)
         {
-            poUse[i] = new Semaphore(1, true);
-            uzywam[i] = new Semaphore(1, true);
-            swap[i] = new Semaphore(1, true);
-            zajmowanePrzez[i] = -1;
-            chcePracowac[i] = -1;
-        }
+            MojWorkplace temp = new MojWorkplace(workplace, this);
 
-        czeka = new Semaphore(2 * N,true);
+            stanowiska_mapa.put(temp.getId(), temp);
+            numerStanowiska.put(workplace.getId(), k);
+
+            poUse[k] = new Semaphore(1, true);
+            uzywam[k] = new Semaphore(1, true);
+            ++k;
+        }
     }
 
-    public void setZajmowanePrzez (int i, long a)
+    public int znajdzIndeks_mapa (WorkplaceId id)
     {
-        if (i != -1)
+        if (id == null)
         {
-            zajmowanePrzez[i] = a;
+            return -1;
+        }
+        return numerStanowiska.get(id);
+    }
+
+
+    public void setZajmowanePrzez_mapa (long help, WorkplaceId id)
+    {
+        if (id == null)
+        {
+            zajmowanePrzez_mapa.remove(help);
+        }
+        else
+        {
+            zajmowanePrzez_mapa.put(help, id);
         }
     }
 
-    public void setChcePracowac (int i, long a)
+    public WorkplaceId setChcePracowac_mapa (long help)
     {
-        if (i != -1)
+        WorkplaceId temp = chcePracowac_mapa.get(help);
+        chcePracowac_mapa.remove(help);
+        return temp;
+    }
+
+    public void zwolnijStary (long help)
+    {
+        WorkplaceId temp = zajmowanePrzez_mapa.get(help);
+        if (temp != null)
         {
-            chcePracowac[i] = a;
+            int i = numerStanowiska.get(temp);
+            uzywam[i].release();
         }
     }
 
-    public void setUzywam (int i, int n)
+    public void zajmij (WorkplaceId id)
     {
-        if (i != -1)
+        int i = numerStanowiska.get(id);
+        try
         {
-            if (n == 0)
-            {
-                try
-                {
-                    System.out.println(Thread.currentThread().getId() + " czekam tu na " + i);
-                    uzywam[i].acquire();
-                    System.out.println(Thread.currentThread().getId() + " juz nie czekam na " + i);
-                }
-                catch (InterruptedException e)
-                {
-                    throw new RuntimeException(e);
-                }
-            }
-            else
-            {
-                uzywam[i].release();
-            }
+            uzywam[i].acquire();
         }
+        catch (InterruptedException e)
+        {
+            throw new RuntimeException(e);
+        }
+
     }
+
 
 
 
@@ -101,21 +112,24 @@ public class MojWorkshop implements Workshop {
     @Override
     public Workplace enter (WorkplaceId wid)
     {
+
         long help = Thread.currentThread().getId();
-        Workplace wynik = znajdzStanowisko(wid);
-        int i = znajdzIndeks(wid);
+
+        Workplace wynik = stanowiska_mapa.get(wid);
+
+        int i = znajdzIndeks_mapa(wid);
         try
         {
 
-            System.out.println(Thread.currentThread().getId() + " czekam w enter na " + i);
+//            System.out.println(Thread.currentThread().getId() + " czekam w enter na " + i);
             poUse[i].acquire();
-            System.out.println(Thread.currentThread().getId() + " juz nie czkam w enter na " + i);
+//            System.out.println(Thread.currentThread().getId() + " juz nie czkam w enter na " + i);
         }
         catch (InterruptedException e)
         {
             throw new RuntimeException(e);
         }
-        chcePracowac[i] = help;
+        chcePracowac_mapa.put(help, wid);
         return wynik;
     }
 
@@ -123,95 +137,50 @@ public class MojWorkshop implements Workshop {
     public Workplace switchTo (WorkplaceId wid)
     {
         long help = Thread.currentThread().getId();
-        int i = znajdzWatek(help);
-        int j = znajdzIndeks(wid);
 
-        if (i == j && i != -1)
+
+
+
+        // stare stanowisko
+        WorkplaceId temp = zajmowanePrzez_mapa.get(help);
+
+        int i = numerStanowiska.get(temp);
+        int j = numerStanowiska.get(wid);
+
+
+        if (wid == temp)
         {
-            chcePracowac[j] = help;
-            return znajdzStanowisko(wid);
+            chcePracowac_mapa.put(help, wid);
+            return stanowiska_mapa.get(wid);
         }
 
         poUse[i].release();
         try
         {
-                        System.out.println(Thread.currentThread().getId() + " czekam w switchu na " + j);
+//                        System.out.println(Thread.currentThread().getId() + " czekam w switchu na " + j);
             poUse[j].acquire();
-            System.out.println(Thread.currentThread().getId() + " juz nie czkam w switchu na " + j);
+//            System.out.println(Thread.currentThread().getId() + " juz nie czkam w switchu na " + j);
 
         }
         catch (InterruptedException e)
         {
             throw new RuntimeException(e);
         }
-        chcePracowac[j] = help;
-        Workplace wynik = znajdzStanowisko(wid);
-        return wynik;
+        chcePracowac_mapa.put(help, wid);
+        return stanowiska_mapa.get(wid);
     }
 
     @Override
     public void leave ()
     {
         long help = Thread.currentThread().getId();
-        int i = znajdzWatek(help);
-        System.out.println(Thread.currentThread().getId() + " opuszczam " + i);
-        zajmowanePrzez[i] = -1;
+        WorkplaceId temp = zajmowanePrzez_mapa.get(help);
+        int i = numerStanowiska.get(temp);
+//        System.out.println(Thread.currentThread().getId() + " opuszczam " + i);
+        zajmowanePrzez_mapa.remove(help);
         poUse[i].release();
         uzywam[i].release();
     }
 
-    public int znajdzIndeks (WorkplaceId wid)
-    {
-        int i = 0;
-        for (Workplace stanowisko : stanowiska)
-        {
-            if (stanowisko.getId().equals(wid))
-            {
-                return i;
-            }
-            ++i;
-        }
-        return -1;
-    }
-
-    public Workplace znajdzStanowisko (WorkplaceId wid)
-    {
-        for (Workplace stanowisko : stanowiska)
-        {
-            if (stanowisko.getId().equals(wid))
-            {
-                return stanowisko;
-            }
-        }
-        return null;
-    }
-
-    public int znajdzWatek (long id)
-    {
-        int i = 0;
-        for (long kto : zajmowanePrzez)
-        {
-            if (kto == id)
-            {
-                return i;
-            }
-            ++i;
-        }
-        return -1;
-    }
-
-    public int znajdzGdzie (long id)
-    {
-        int i = 0;
-        for (long kto : chcePracowac)
-        {
-            if (kto == id)
-            {
-                return i;
-            }
-            ++i;
-        }
-        return -1;
-    }
 
 }

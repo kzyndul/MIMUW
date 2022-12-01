@@ -1,6 +1,7 @@
 package cp2022.solution;
 
 import cp2022.base.Workplace;
+import cp2022.base.WorkplaceId;
 
 public class MojWorkplace extends Workplace {
     private final MojWorkshop warsztat;
@@ -19,16 +20,33 @@ public class MojWorkplace extends Workplace {
 //        System.out.println("Moje USe");
 
         long help = Thread.currentThread().getId();
-        int i = warsztat.znajdzWatek(help);
 
-        warsztat.setZajmowanePrzez(i, -1);
-        warsztat.setUzywam(i, 1);
-        int j = warsztat.znajdzGdzie(help);
+//        int i = warsztat.znajdzWatek(help);
 
-        warsztat.setChcePracowac(j, -1);
-        warsztat.setUzywam(j, 0);
+        warsztat.zwolnijStary(help);
 
-        warsztat.setZajmowanePrzez(j, help);
+        warsztat.setZajmowanePrzez_mapa(help, orginal.getId());
+//        warsztat.setZajmowanePrzez(i, -1);
+
+
+
+//        warsztat.setUzywam(i, 1);
+
+
+//        int j = warsztat.znajdzGdzie(help);
+
+        WorkplaceId temp = warsztat.setChcePracowac_mapa(help);
+//        warsztat.setChcePracowac(j, -1);
+
+
+        warsztat.zajmij(orginal.getId());
+//        warsztat.setUzywam(j, 0);
+
+
+
+
+        warsztat.setZajmowanePrzez_mapa(help, temp);
+//        warsztat.setZajmowanePrzez(j, help);
         orginal.use();
     }
 }
