@@ -35,11 +35,12 @@ public class MojWorkplace extends Workplace {
 
 //        int j = warsztat.znajdzGdzie(help);
 
-        WorkplaceId temp = warsztat.setChcePracowac_mapa(help);
 //        warsztat.setChcePracowac(j, -1);
 
 
         warsztat.zajmij(orginal.getId());
+        WorkplaceId temp = warsztat.setChcePracowac_mapa(help);
+
 //        warsztat.setUzywam(j, 0);
 
 
