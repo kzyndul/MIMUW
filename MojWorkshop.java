@@ -96,6 +96,7 @@ public class MojWorkshop implements Workshop {
         if (temp != null)
         {
             int i = numerStanowiska.get(temp);
+            zajmowanePrzez_mapa.remove(temp); // dodalem
             uzywam[i].release();
         }
     }
@@ -242,6 +243,7 @@ public class MojWorkshop implements Workshop {
         {
             throw new RuntimeException(e);
         }
+//        zajmowanePrzez_mapa.put(help, wid);
         chcePracowac_mapa.put(help, wid);
         return wynik;
     }
@@ -266,6 +268,7 @@ public class MojWorkshop implements Workshop {
         }
 
         poUse[i].release();
+        chcePracowac_mapa.put(help, wid);
         try
         {
 //            mutex_wejscie.acquire();
@@ -283,7 +286,6 @@ public class MojWorkshop implements Workshop {
         {
             throw new RuntimeException(e);
         }
-        chcePracowac_mapa.put(help, wid);
         return stanowiska_mapa.get(wid);
     }
 

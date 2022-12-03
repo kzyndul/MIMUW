@@ -17,37 +17,15 @@ public class MojWorkplace extends Workplace {
     @Override
     public void use ()
     {
-//        System.out.println("Moje USe");
-
         long help = Thread.currentThread().getId();
-
-//        int i = warsztat.znajdzWatek(help);
-
         warsztat.zwolnijStary(help);
 
-        warsztat.setZajmowanePrzez_mapa(help, orginal.getId());
-//        warsztat.setZajmowanePrzez(i, -1);
-
-
-
-//        warsztat.setUzywam(i, 1);
-
-
-//        int j = warsztat.znajdzGdzie(help);
-
-//        warsztat.setChcePracowac(j, -1);
-
+        warsztat.setZajmowanePrzez_mapa(help, orginal.getId()); // niew powinnow byc
 
         warsztat.zajmij(orginal.getId());
         WorkplaceId temp = warsztat.setChcePracowac_mapa(help);
 
-//        warsztat.setUzywam(j, 0);
-
-
-
-
-        warsztat.setZajmowanePrzez_mapa(help, temp);
-//        warsztat.setZajmowanePrzez(j, help);
+//        warsztat.setZajmowanePrzez_mapa(help, temp);
         orginal.use();
     }
 }
