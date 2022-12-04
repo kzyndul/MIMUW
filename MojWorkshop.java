@@ -8,7 +8,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
-// co 2 * N czekac
 public class MojWorkshop implements Workshop {
 
     private ConcurrentHashMap<WorkplaceId, MojWorkplace> stanowiska_mapa;
@@ -16,6 +15,8 @@ public class MojWorkshop implements Workshop {
     private ConcurrentHashMap<Long, WorkplaceId> zajmowanePrzez_mapa;
     private ConcurrentHashMap<Long, WorkplaceId> chcePracowac_mapa;
     private ConcurrentHashMap<Long, WorkplaceId> wszedlemNa;
+    private Set<Long> obecnyCykl = ConcurrentHashMap.newKeySet();
+
 
     private Semaphore[] swap;
     private Semaphore[] poUse;
@@ -29,8 +30,10 @@ public class MojWorkshop implements Workshop {
     Semaphore mutex_wejscie = new Semaphore(1, true);
     Semaphore mutex_wyjscie = new Semaphore(1, true);
 
-    Semaphore mutex = new Semaphore(1, true);
 
+    Semaphore mutex = new Semaphore(1, true);
+    Semaphore rozCykl = new Semaphore(1, true);
+//    int rozCyklInt = 1;
 
 
 
@@ -51,7 +54,7 @@ public class MojWorkshop implements Workshop {
 
         czekajacy = new LinkedList<Para<Long, Boolean>>();
 
-        int k =0;
+        int k = 0;
         for (Workplace workplace : stanowiska)
         {
             MojWorkplace temp = new MojWorkplace(workplace, this);
@@ -88,11 +91,9 @@ public class MojWorkshop implements Workshop {
         }
     }
 
-    public WorkplaceId setChcePracowac_mapa (long help)
+    public void setChcePracowac_mapa (long help)
     {
-        WorkplaceId temp = chcePracowac_mapa.get(help);
         chcePracowac_mapa.remove(help);
-        return temp;
     }
 
     public void zwolnijStary (long help)
@@ -101,7 +102,7 @@ public class MojWorkshop implements Workshop {
         if (temp != null)
         {
             int i = numerStanowiska.get(temp);
-            zajmowanePrzez_mapa.remove(temp); // dodalem
+            zajmowanePrzez_mapa.remove(help); // dodalem
             uzywam[i].release();
         }
     }
@@ -166,21 +167,24 @@ public class MojWorkshop implements Workshop {
 
     }
 
+//    public void rozCykl (long thred)
+//    {
+//        obecnyCykl.remove(thred);
+//        if (rozCyklInt == 0 && obecnyCykl.size() == 0)
+//        {
+//            rozCykl.release();
+//            ++rozCyklInt;
+//        }
+//    }
 
 
-    public void wyjdz()
+    public void wyjdz ()
     {
         long help = Thread.currentThread().getId();
         int i = czekajacy.indexOf(new Para<>(help, true));
         int ii = czekajacy.indexOf(new Para<>(help, false));
         i = Math.max(i, ii);
 
-        if (i == -1)
-        {
-            System.out.println("JD");
-
-        }
-//        System.out.println(Thread.currentThread().getId() + " odejmje");
         try
         {
             mutex.acquire();
@@ -220,6 +224,45 @@ public class MojWorkshop implements Workshop {
         mutex.release();
     }
 
+
+    private Long getKeyByValue (WorkplaceId value)
+    {
+
+        for (Map.Entry<Long, WorkplaceId> entry : zajmowanePrzez_mapa.entrySet())
+        {
+            if (Objects.equals(value, entry.getValue()))
+            {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    private Set<Long> cykl (long thred)
+    {
+        Set<Long> wynik = ConcurrentHashMap.newKeySet();
+        wynik.add(thred);
+        WorkplaceId p = chcePracowac_mapa.get(thred);
+        WorkplaceId a = null;
+        Long temp = null;
+        while (true)
+        {
+            temp = getKeyByValue(p);
+            if (temp == null || p.equals(a))
+            {
+                return ConcurrentHashMap.newKeySet();
+            }
+            if (wynik.contains(temp))
+            {
+                return wynik;
+            }
+            wynik.add(temp);
+            a = p;
+            p = chcePracowac_mapa.get(temp);
+        }
+    }
+
+
     @Override
     public Workplace enter (WorkplaceId wid)
     {
@@ -229,24 +272,26 @@ public class MojWorkshop implements Workshop {
         int i = znajdzIndeks_mapa(wid);
         try
         {
-
             mutex_wejscie.acquire();
             wejdz();
             mutex_wejscie.release();
-//            System.out.println(Thread.currentThread().getId() + " czekam w enter na " + i);
             poUse[i].acquire();
             swap[i].acquire(); // dodalem
-//            System.out.println(Thread.currentThread().getId() + " juz nie czkam w enter na " + i);
             mutex_wyjscie.acquire();
             wyjdz();
             mutex_wyjscie.release();
+
+            rozCykl.acquire();
+            chcePracowac_mapa.put(help, wid);
+            rozCykl.release();
+
+
+
         }
         catch (InterruptedException e)
         {
             throw new RuntimeException(e);
         }
-//        zajmowanePrzez_mapa.put(help, wid);
-        chcePracowac_mapa.put(help, wid);
         wszedlemNa.put(help, wid); // dodalem
         return wynik;
     }
@@ -256,7 +301,6 @@ public class MojWorkshop implements Workshop {
     {
         long help = Thread.currentThread().getId();
 
-        // stare stanowisko
         WorkplaceId temp = zajmowanePrzez_mapa.get(help);
 
 
@@ -266,22 +310,46 @@ public class MojWorkshop implements Workshop {
 
         if (wid == temp)
         {
+            try
+            {
+                rozCykl.acquire();
+            }
+            catch (InterruptedException e)
+            {
+                throw new RuntimeException(e);
+            }
             chcePracowac_mapa.put(help, wid);
+            rozCykl.release();
             return stanowiska_mapa.get(wid);
         }
-
-//        poUse[i].release();
-        swap[i].release();
-        chcePracowac_mapa.put(help, wid);
         try
         {
-//            mutex_wejscie.acquire();
+            rozCykl.acquire();
+            chcePracowac_mapa.put(help, wid);
+            obecnyCykl.addAll(cykl(help));
+            rozCykl.release();
+
             wejdz_swap();
-//            mutex_wejscie.release();
-//                        System.out.println(Thread.currentThread().getId() + " czekam w switchu na " + j);
-//            poUse[j].acquire();
-            swap[j].acquire();
-//            System.out.println(Thread.currentThread().getId() + " juz nie czkam w switchu na " + j);
+
+            if (!obecnyCykl.isEmpty())
+            {
+                swap[i].release();
+                swap[j].acquire();
+            }
+            else
+            {
+                swap[j].acquire();
+                if (!obecnyCykl.isEmpty())
+                {
+                    if (!obecnyCykl.contains(help))
+                    {
+                        swap[j].release();
+                        swap[j].acquire();
+                    }
+                    obecnyCykl.remove(help);
+                }
+                swap[i].release();
+            }
 
             mutex_wyjscie.acquire();
             wyjdz();
@@ -300,9 +368,7 @@ public class MojWorkshop implements Workshop {
         long help = Thread.currentThread().getId();
         WorkplaceId temp = zajmowanePrzez_mapa.get(help);
         int i = numerStanowiska.get(temp);
-//        System.out.println(Thread.currentThread().getId() + " opuszczam " + i);
         zajmowanePrzez_mapa.remove(help);
-//        poUse[i].release();
         swap[i].release();
         int j = numerStanowiska.get(wszedlemNa.get(help));
         poUse[j].release();

@@ -20,12 +20,11 @@ public class MojWorkplace extends Workplace {
         long help = Thread.currentThread().getId();
         warsztat.zwolnijStary(help);
 
-        warsztat.setZajmowanePrzez_mapa(help, orginal.getId()); // niew powinnow byc
-
         warsztat.zajmij(orginal.getId());
-        WorkplaceId temp = warsztat.setChcePracowac_mapa(help);
+//        warsztat.rozCykl(help);
+        warsztat.setZajmowanePrzez_mapa(help, orginal.getId()); // niew powinnow byc
+        warsztat.setChcePracowac_mapa(help);
 
-//        warsztat.setZajmowanePrzez_mapa(help, temp);
         orginal.use();
     }
 }
