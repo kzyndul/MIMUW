@@ -15,27 +15,27 @@ class kvfifo {
         std::shared_ptr<std::list<std::pair<K, V>>> elements;
         std::shared_ptr<std::map<K, std::list<listIt>>> keys;
     public:
-        kvfifo() {
-            elements = std::make_shared<std::list<std::pair<K, V>>>();
-            keys = std::make_shared<std::map<K, std::list<std::pair<K, V> *>>>();
-        }
+        kvfifo() : elements(std::make_shared<std::list<std::pair<K, V>>>()), keys(std::make_shared<std::map<K, std::list<listIt>>>()) { }
 
-        kvfifo(kvfifo const &) {
-
-        }
-
-        kvfifo(kvfifo &&) {
-
-        }
-
-        kvfifo &operator=(kvfifo other) {
+        // jezeli ktos juz kopiuje po other to robie deep copy
+        // jak oddam referencje to nie moze byc robiona kopia plytka
+        kvfifo(kvfifo const &other) {
             elements = other.elements;
             keys = other.keys;
         }
 
+        kvfifo(kvfifo &&other) noexcept : elements(std::move(other.elements)), keys(std::move(other.keys)) {}
+
+        kvfifo &operator=(kvfifo other) {
+            elements = other.elements;
+            keys = other.keys;
+            return *this;
+        }
+
         void push(K const &k, V const &v) {
             elements->push_back({k, v});
-            listIt it = elements->end().prev();
+            auto it = elements->end();
+            --it;
             (*keys)[k].push_back(it);
         }
 
@@ -49,6 +49,8 @@ class kvfifo {
         }
 
         void pop(K const &k) {
+            if (empty())
+                throw std::invalid_argument("Invalid operation.");
             if ((*keys)[k].empty())
                 throw std::invalid_argument("Invalid operation.");
 
@@ -58,11 +60,13 @@ class kvfifo {
         }
 
         void move_to_back(K const &k) {
+            if (empty())
+                throw std::invalid_argument("Invalid operation.");
             std::list<listIt> keyIterators = (*keys)[k];
             if (keyIterators.empty())
                 throw std::invalid_argument("Invalid operation.");
 
-            auto it = elements.begin();
+            auto it = elements->begin();
             while (it != keyIterators.end()) {
                 push((**it).first, (**it).second);
                 elements->erase(*it);
@@ -71,23 +75,41 @@ class kvfifo {
         }
 
         std::pair<K const &, V &> front() {
-            
+            if (empty())
+                throw std::invalid_argument("Invalid operation.");
+            auto a = elements->front();
+            return std::make_pair(std::cref(a.first), std::ref(a.second));
         }
 
         std::pair<K const &, V const &> front() const {
-
+            if (empty())
+                throw std::invalid_argument("Invalid operation.");
+            auto a = elements->front();
+            return std::make_pair(std::cref(a.first), std::cref(a.second));
         }
 
         std::pair<K const &, V &> back() {
-
+            if (empty())
+                throw std::invalid_argument("Invalid operation.");
+            auto a = elements->back();
+            return std::make_pair(std::cref(a.first), std::ref(a.second));
         }
 
         std::pair<K const &, V const &> back() const {
-
+            if (empty())
+                throw std::invalid_argument("Invalid operation.");
+            auto a = elements->back();
+            return std::make_pair(std::cref(a.first), std::cref(a.second));
         }
 
         std::pair<K const &, V &> first(K const &key) {
-
+//            if (empty())
+//                throw std::invalid_argument("Invalid operation.");
+//            std::list<listIt> keyIterators = (*keys)[key];
+//            if (keyIterators.empty())
+//                throw std::invalid_argument("Invalid operation.");
+//            listIt it = keyIterators.front();
+//            return std::make_pair(std::cref(it->first), std::cref(it->second));
         }
 
         std::pair<K const &, V const &> first(K const &key) const {
