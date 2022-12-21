@@ -9,22 +9,44 @@
 #include <memory>
 
 template<typename K, typename V>
-class kvfifo {
+class k vfifo {
     private:
-        using listIt = typename std::list<std::pair<K, V>>::iterator;
+        using listIterator = typename std::list<std::pair<K, V>>::iterator;
         std::shared_ptr<std::list<std::pair<K, V>>> elements;
-        std::shared_ptr<std::map<K, std::list<listIt>>> keys;
-    public:
-        kvfifo() : elements(std::make_shared<std::list<std::pair<K, V>>>()), keys(std::make_shared<std::map<K, std::list<listIt>>>()) { }
+        std::shared_ptr<std::map<K, std::list<listIterator>>> keys;
+        bool referenced;
 
-        // jezeli ktos juz kopiuje po other to robie deep copy
-        // jak oddam referencje to nie moze byc robiona kopia plytka
-        kvfifo(kvfifo const &other) {
-            elements = other.elements;
-            keys = other.keys;
+        void makeCopy() {
+            elements = std::make_shared<std::list<std::pair<K, V>>>(*elements);
+            keys = std::make_shared<std::map<K, std::list<listIterator>>>();
+            listIterator it = (*elements).begin();
+            for (std::pair<K, V> element : (*elements)) {
+                (*keys)[element.first].push_back(it);
+                it = next(it);
+            }
         }
 
-        kvfifo(kvfifo &&other) noexcept : elements(std::move(other.elements)), keys(std::move(other.keys)) {}
+        void tryCopy() {
+            if (!elements.unique())
+                makeCopy();
+        }
+
+    public:
+        kvfifo() noexcept :
+            elements(std::make_shared<std::list<std::pair<K, V>>>()),
+            keys(std::make_shared<std::map<K, std::list<listIterator>>>()) {}
+
+
+        kvfifo(kvfifo const &other) noexcept {
+            /*elements = other.elements;
+            keys = other.keys;
+            if (other.referenced)
+                makeCopy();*/
+        }
+
+        kvfifo(kvfifo &&other) noexcept : 
+            elements(std::move(other.elements)), 
+            keys(std::move(other.keys)) {}
 
         kvfifo &operator=(kvfifo other) {
             elements = other.elements;
@@ -33,9 +55,8 @@ class kvfifo {
         }
 
         void push(K const &k, V const &v) {
-            elements->push_back({k, v});
-            auto it = elements->end();
-            --it;
+            (*elements).push_back({k, v});
+            listIterator it = prev((*elements).end());
             (*keys)[k].push_back(it);
         }
 
@@ -43,102 +64,107 @@ class kvfifo {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
 
-            std::pair<K, V> element = elements->front();
-            elements->pop_front();
+            std::pair<K, V> element = (*elements).front();
+            (*elements).pop_front();
             (*keys)[element.first].pop_front();
         }
 
         void pop(K const &k) {
-            if (empty())
-                throw std::invalid_argument("Invalid operation.");
-            if ((*keys)[k].empty())
+            if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
 
-            listIt it = (*keys)[k].front();
+            listIterator it = (*keys)[k].front();
             (*keys)[k].pop_front();
-            elements->erase(it);
+            (*elements).erase(it);
         }
 
         void move_to_back(K const &k) {
-            if (empty())
-                throw std::invalid_argument("Invalid operation.");
-            std::list<listIt> keyIterators = (*keys)[k];
-            if (keyIterators.empty())
+            size_t size = count(k);
+            if (!size)
                 throw std::invalid_argument("Invalid operation.");
 
-            auto it = elements->begin();
-            while (it != keyIterators.end()) {
-                push((**it).first, (**it).second);
-                elements->erase(*it);
-                it = keyIterators.erase(it);
+            typename std::list<listIterator>::iterator it = (*keys)[k].begin();
+            for (size_t i = 0; i < size; ++i) {
+                (*elements).push_back(**it);
+                (*elements).erase(*it);
+                *it = prev((*elements).end());
+                it = next(it);
             }
         }
 
         std::pair<K const &, V &> front() {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
-            auto a = elements->front();
-            return std::make_pair(std::cref(a.first), std::ref(a.second));
+            tryCopy();
+            referenced = true;
+            return {(*elements).front().first, (*elements).front().second};
         }
 
         std::pair<K const &, V const &> front() const {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
-            auto a = elements->front();
-            return std::make_pair(std::cref(a.first), std::cref(a.second));
+            return {(*elements).front().first, (*elements).front().second};
         }
 
         std::pair<K const &, V &> back() {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
-            auto a = elements->back();
-            return std::make_pair(std::cref(a.first), std::ref(a.second));
+            tryCopy();
+            referenced = true;
+            return {(*elements).back().first, (*elements).back().second};
         }
 
         std::pair<K const &, V const &> back() const {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
-            auto a = elements->back();
-            return std::make_pair(std::cref(a.first), std::cref(a.second));
+            return {(*elements).back().first, (*elements).back().second};
         }
 
-        std::pair<K const &, V &> first(K const &key) {
-//            if (empty())
-//                throw std::invalid_argument("Invalid operation.");
-//            std::list<listIt> keyIterators = (*keys)[key];
-//            if (keyIterators.empty())
-//                throw std::invalid_argument("Invalid operation.");
-//            listIt it = keyIterators.front();
-//            return std::make_pair(std::cref(it->first), std::cref(it->second));
+        std::pair<K const &, V &> first(K const &k) {
+            if (!count(k))
+                throw std::invalid_argument("Invalid operation.");
+            tryCopy();
+            referenced = true;
+            return {*(*keys)[k].front().first, *(*keys)[k].front().second};
         }
 
-        std::pair<K const &, V const &> first(K const &key) const {
-
+        std::pair<K const &, V const &> first(K const &k) const {
+            if (!count(k))
+                throw std::invalid_argument("Invalid operation.");
+            return {*(*keys)[k].front().first, *(*keys)[k].front().second};
         }
 
-        std::pair<K const &, V &> last(K const &key) {
-
+        std::pair<K const &, V &> last(K const &k) {
+            if (!count(k))
+                throw std::invalid_argument("Invalid operation.");
+            tryCopy();
+            referenced = true;
+            return {*(*keys)[k].back().first, *(*keys)[k].back().second};
         }
 
-        std::pair<K const &, V const &> last(K const &key) const {
-
+        std::pair<K const &, V const &> last(K const &k) const {
+            if (!count(k))
+                throw std::invalid_argument("Invalid operation.");
+            return {*(*keys)[k].back().first, *(*keys)[k].back().second};
         }
 
         size_t size() const {
-            return elements->size();
+            return (*elements).size();
         }
 
         bool empty() const {
-            return elements->empty();
+            return (*elements).empty();
         }
 
         size_t count(K const &x) const {
+            if (!(*keys).contains(x))
+                return 0;
             return (*keys)[x].size();
         }
 
         void clear() {
             elements = std::make_shared<std::list<std::pair<K, V>>>();
-            keys = std::make_shared<std::map<K, std::list<listIt>>>();
+            keys = std::make_shared<std::map<K, std::list<listIterator>>>();
         }
 };
 #endif
