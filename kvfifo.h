@@ -36,6 +36,7 @@ class kvfifo {
         class k_iterator : public mapaT::const_iterator {
             public:
                 explicit k_iterator(typename mapaT::const_iterator it) : mapaT::const_iterator(it) {}
+                // ty chyba zalezy od typu K
                 K operator*() {
                     return mapaT::const_iterator::operator*().first;
                 }
@@ -49,11 +50,11 @@ class kvfifo {
             return k_iterator(keys->cend());
         }
 
-        kvfifo() noexcept :
+        kvfifo() :
             elements(std::make_shared<std::list<std::pair<K, V>>>()),
             keys(std::make_shared<std::map<K, std::list<listIterator>>>()) {}
 
-        kvfifo(kvfifo const &other) noexcept {
+        kvfifo(kvfifo const &other) {
             elements = other.elements;
             keys = other.keys;
             if (other.referenced)
@@ -66,7 +67,7 @@ class kvfifo {
             keys = other.keys;
         }
 
-        kvfifo &operator=(kvfifo other) {
+        kvfifo &operator=(kvfifo other) noexcept {
             elements = other.elements;
             keys = other.keys;
             return *this;
@@ -78,7 +79,7 @@ class kvfifo {
             (*keys)[k].push_back(it);
         }
 
-        void pop() {
+        void pop() noexcept {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
 
@@ -87,7 +88,7 @@ class kvfifo {
             (*keys)[element.first].pop_front();
         }
 
-        void pop(K const &k) {
+        void pop(K const &k) noexcept {
             if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
 
@@ -118,7 +119,7 @@ class kvfifo {
             return {(*elements).front().first, (*elements).front().second};
         }
 
-        std::pair<K const &, V const &> front() const {
+        std::pair<K const &, V const &> front() const noexcept {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
             return {(*elements).front().first, (*elements).front().second};
@@ -132,7 +133,7 @@ class kvfifo {
             return {(*elements).back().first, (*elements).back().second};
         }
 
-        std::pair<K const &, V const &> back() const {
+        std::pair<K const &, V const &> back() const noexcept {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
             return {(*elements).back().first, (*elements).back().second};
@@ -146,7 +147,7 @@ class kvfifo {
             return {(*((*keys)[k].front())).first, (*((*keys)[k].front())).second};
         }
 
-        std::pair<K const &, V const &> first(K const &k) const {
+        std::pair<K const &, V const &> first(K const &k) const noexcept {
             if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
             return {(*((*keys)[k].front())).first, (*((*keys)[k].front())).second};
@@ -160,26 +161,27 @@ class kvfifo {
             return {(*((*keys)[k].back())).first, (*((*keys)[k].back())).second};
         }
 
-        std::pair<K const &, V const &> last(K const &k) const {
+        std::pair<K const &, V const &> last(K const &k) const noexcept {
             if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
             return {(*((*keys)[k].back())).first, (*((*keys)[k].back())).second};
         }
 
-        size_t size() const {
+        size_t size() const noexcept {
             return (*elements).size();
         }
 
-        bool empty() const {
+        bool empty() const noexcept {
             return (*elements).empty();
         }
 
-        size_t count(K const &x) const {
+        size_t count(K const &x) const noexcept {
             if (!(*keys).contains(x))
                 return 0;
             return (*keys)[x].size();
         }
 
+        // imo powinno byc noexcept
         void clear() {
             elements = std::make_shared<std::list<std::pair<K, V>>>();
             keys = std::make_shared<std::map<K, std::list<listIterator>>>();
