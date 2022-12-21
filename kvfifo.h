@@ -9,7 +9,7 @@
 #include <memory>
 
 template<typename K, typename V>
-class k vfifo {
+class kvfifo {
     private:
         using listIterator = typename std::list<std::pair<K, V>>::iterator;
         std::shared_ptr<std::list<std::pair<K, V>>> elements;
