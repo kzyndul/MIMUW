@@ -18,25 +18,39 @@ class kvfifo {
         bool referenced = false;
 
         void makeCopy() {
-            elements = std::make_shared<std::list<std::pair<K, V>>>(*elements);
-            keys = std::make_shared<std::map<K, std::list<listIterator>>>();
-            listIterator it = (*elements).begin();
-            for (std::pair<K, V> element : (*elements)) {
-                (*keys)[element.first].push_back(it);
-                it = next(it);
+            std::shared_ptr<std::list<std::pair<K, V>>> tempList;
+            std::shared_ptr<std::map<K, std::list<listIterator>>> tempMap;
+            bool fail = false;
+            try {
+                tempList = std::make_shared<std::list<std::pair<K, V>>>(*elements);
+                tempMap = std::make_shared<std::map<K, std::list<listIterator>>>();
+                listIterator it = (*tempList).begin();
+                for (std::pair<K, V> element : (*tempList)) {
+                    (*tempMap)[element.first].push_back(it);
+                    it = next(it);
+                }
+            } catch (...) {
+                fail = true;
+            }
+            if (!fail)
+            {
+                elements = tempList;
+                keys = tempMap;
             }
         }
 
         void tryCopy() {
             if (!elements.unique())
+            {
                 makeCopy();
+                referenced = false;
+            }
         }
 
     public:
         class k_iterator : public mapaT::const_iterator {
             public:
                 explicit k_iterator(typename mapaT::const_iterator it) : mapaT::const_iterator(it) {}
-                // ty chyba zalezy od typu K
                 K operator*() {
                     return mapaT::const_iterator::operator*().first;
                 }
@@ -50,9 +64,15 @@ class kvfifo {
             return k_iterator(keys->cend());
         }
 
-        kvfifo() :
-            elements(std::make_shared<std::list<std::pair<K, V>>>()),
-            keys(std::make_shared<std::map<K, std::list<listIterator>>>()) {}
+        kvfifo() {
+            try {
+                elements = std::make_shared<std::list<std::pair<K, V>>>();
+                keys = std::make_shared<std::map<K, std::list<listIterator>>>();
+            } catch (...) {
+                elements = nullptr;
+                keys = nullptr;
+            }
+        }
 
         kvfifo(kvfifo const &other) {
             elements = other.elements;
@@ -62,9 +82,9 @@ class kvfifo {
         }
 
         kvfifo(kvfifo &&other) noexcept {
-            referenced = other.referenced;
-            elements = other.elements;
-            keys = other.keys;
+            referenced = std::move(other.referenced);
+            elements = std::move(other.elements);
+            keys = std::move(other.keys);
         }
 
         kvfifo &operator=(kvfifo other) noexcept {
@@ -81,23 +101,30 @@ class kvfifo {
         }
 
         void push(K const &k, V const &v) {
+            tryCopy();
             (*elements).push_back({k, v});
             listIterator it = prev((*elements).end());
-            (*keys)[k].push_back(it);
+            try {
+                (*keys)[k].push_back(it);
+            } catch (...) {
+                (*elements).erase(it);
+            }
         }
 
-        void pop() noexcept {
+        void pop() {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
+            tryCopy();
 
             std::pair<K, V> element = (*elements).front();
             (*elements).pop_front();
             (*keys)[element.first].pop_front();
         }
 
-        void pop(K const &k) noexcept {
+        void pop(K const &k) {
             if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
+            tryCopy();
 
             listIterator it = (*keys)[k].front();
             (*keys)[k].pop_front();
@@ -106,16 +133,17 @@ class kvfifo {
 
         void move_to_back(K const &k) {
             size_t size = count(k);
-            if (!size)
+            if (size == 0)
                 throw std::invalid_argument("Invalid operation.");
-
+            tryCopy();
             typename std::list<listIterator>::iterator it = (*keys)[k].begin();
-            for (size_t i = 0; i < size; ++i) {
-                (*elements).push_back(**it);
-                (*elements).erase(*it);
-                *it = prev((*elements).end());
-                it = next(it);
-            }
+                for (size_t i = 0; i < size; ++i) {
+                    auto temp = std::move(**it);
+                    (*elements).erase(*it);
+                    (*elements).push_back(std::move(temp));
+                    *it = prev((*elements).end());
+                    it = next(it);
+                }
         }
 
         std::pair<K const &, V &> front() {
@@ -126,7 +154,7 @@ class kvfifo {
             return {(*elements).front().first, (*elements).front().second};
         }
 
-        std::pair<K const &, V const &> front() const noexcept {
+        std::pair<K const &, V const &> front() const {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
             return {(*elements).front().first, (*elements).front().second};
@@ -140,7 +168,7 @@ class kvfifo {
             return {(*elements).back().first, (*elements).back().second};
         }
 
-        std::pair<K const &, V const &> back() const noexcept {
+        std::pair<K const &, V const &> back() const {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
             return {(*elements).back().first, (*elements).back().second};
@@ -154,7 +182,7 @@ class kvfifo {
             return {(*((*keys)[k].front())).first, (*((*keys)[k].front())).second};
         }
 
-        std::pair<K const &, V const &> first(K const &k) const noexcept {
+        std::pair<K const &, V const &> first(K const &k) const {
             if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
             return {(*((*keys)[k].front())).first, (*((*keys)[k].front())).second};
@@ -168,7 +196,7 @@ class kvfifo {
             return {(*((*keys)[k].back())).first, (*((*keys)[k].back())).second};
         }
 
-        std::pair<K const &, V const &> last(K const &k) const noexcept {
+        std::pair<K const &, V const &> last(K const &k) const {
             if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
             return {(*((*keys)[k].back())).first, (*((*keys)[k].back())).second};
