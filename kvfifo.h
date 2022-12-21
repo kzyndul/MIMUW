@@ -15,7 +15,7 @@ class kvfifo {
         using mapaT = typename std::map<K, std::list<listIterator>>;
         std::shared_ptr<std::list<std::pair<K, V>>> elements;
         std::shared_ptr<std::map<K, std::list<listIterator>>> keys;
-        bool referenced;
+        bool referenced = false;
 
         void makeCopy() {
             elements = std::make_shared<std::list<std::pair<K, V>>>(*elements);
@@ -68,8 +68,15 @@ class kvfifo {
         }
 
         kvfifo &operator=(kvfifo other) noexcept {
+            if (elements == other.elements && keys == other.keys)
+                return *this;
+
             elements = other.elements;
             keys = other.keys;
+            if (other.referenced)
+                makeCopy();
+
+            referenced = false;
             return *this;
         }
 
@@ -181,7 +188,6 @@ class kvfifo {
             return (*keys)[x].size();
         }
 
-        // imo powinno byc noexcept
         void clear() {
             elements = std::make_shared<std::list<std::pair<K, V>>>();
             keys = std::make_shared<std::map<K, std::list<listIterator>>>();
