@@ -64,20 +64,12 @@ class kvfifo {
             keys(std::make_shared<std::map<K, std::list<listIterator>>>()),
             referenced(false) {}
 
-        kvfifo(kvfifo const &other) {
-            std::shared_ptr<std::list<std::pair<K, V>>> oldElements = elements;
-            std::shared_ptr<std::map<K, std::list<listIterator>>> oldKeys = keys;
-            try {
-                elements = other.elements;
-                keys = other.keys;
-                // FIXME referenced = false;
-                if (other.referenced)
-                    makeCopy();
-            } catch (...) {
-                elements = oldElements;
-                keys = oldKeys;
-                throw;
-            }
+        kvfifo(kvfifo const &other) :
+            elements(other.elements),
+            keys(other.keys),
+            referenced(false) {
+            if (other.referenced)
+                makeCopy();
         }
 
         kvfifo(kvfifo &&other) noexcept = default;
@@ -91,7 +83,7 @@ class kvfifo {
             try {
                 elements = other.elements;
                 keys = other.keys;
-                // FIXME referenced = false;
+                referenced = false;
                 if (other.referenced)
                     makeCopy();
                 return *this;
