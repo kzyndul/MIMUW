@@ -12,7 +12,7 @@ template<typename K, typename V>
 class kvfifo {
     private:
         using listIterator = typename std::list<std::pair<K, V>>::iterator;
-        using mapaT = typename std::map<K, std::list<listIterator>>;
+        using mapIterator = typename std::map<K, std::list<listIterator>>;
         std::shared_ptr<std::list<std::pair<K, V>>> elements;
         std::shared_ptr<std::map<K, std::list<listIterator>>> keys;
         bool referenced = false;
@@ -32,27 +32,24 @@ class kvfifo {
             } catch (...) {
                 fail = true;
             }
-            if (!fail)
-            {
+            if (!fail) {
                 elements = tempList;
                 keys = tempMap;
+                referenced = false;
             }
         }
 
         void tryCopy() {
             if (!elements.unique())
-            {
                 makeCopy();
-                referenced = false;
-            }
         }
 
     public:
-        class k_iterator : public mapaT::const_iterator {
+        class k_iterator : public mapIterator::const_iterator {
             public:
-                explicit k_iterator(typename mapaT::const_iterator it) : mapaT::const_iterator(it) {}
+                explicit k_iterator(typename mapIterator::const_iterator it) : mapIterator::const_iterator(it) {}
                 K operator*() {
-                    return mapaT::const_iterator::operator*().first;
+                    return mapIterator::const_iterator::operator*().first;
                 }
         };
 
@@ -64,40 +61,45 @@ class kvfifo {
             return k_iterator(keys->cend());
         }
 
-        kvfifo() {
+        kvfifo() :
+            elements(std::make_shared<std::list<std::pair<K, V>>>()),
+            keys(std::make_shared<std::map<K, std::list<listIterator>>>()) {}
+
+        kvfifo(kvfifo const &other) {
+            std::shared_ptr<std::list<std::pair<K, V>>> oldElements = elements;
+            std::shared_ptr<std::map<K, std::list<listIterator>>> oldKeys = keys;
             try {
-                elements = std::make_shared<std::list<std::pair<K, V>>>();
-                keys = std::make_shared<std::map<K, std::list<listIterator>>>();
+                elements = other.elements;
+                keys = other.keys;
+                if (other.referenced)
+                    makeCopy();
             } catch (...) {
-                elements = nullptr;
-                keys = nullptr;
+                elements = oldElements;
+                keys = oldKeys;
             }
         }
 
-        kvfifo(kvfifo const &other) {
-            elements = other.elements;
-            keys = other.keys;
-            if (other.referenced)
-                makeCopy();
-        }
-
-        kvfifo(kvfifo &&other) noexcept {
-            referenced = std::move(other.referenced);
-            elements = std::move(other.elements);
-            keys = std::move(other.keys);
-        }
+        kvfifo(kvfifo &&other) noexcept :
+            referenced(std::move(other.referenced)),
+            elements(std::move(other.elements)),
+            keys(std::move(other.keys)) {}
 
         kvfifo &operator=(kvfifo other) noexcept {
             if (elements == other.elements && keys == other.keys)
                 return *this;
 
-            elements = other.elements;
-            keys = other.keys;
-            if (other.referenced)
-                makeCopy();
-
-            referenced = false;
-            return *this;
+            std::shared_ptr<std::list<std::pair<K, V>>> oldElements = elements;
+            std::shared_ptr<std::map<K, std::list<listIterator>>> oldKeys = keys;
+            try {
+                elements = other.elements;
+                keys = other.keys;
+                if (other.referenced)
+                    makeCopy();
+                return *this;
+            } catch (...) {
+                elements = oldElements;
+                keys = oldKeys;
+            }
         }
 
         void push(K const &k, V const &v) {
@@ -115,7 +117,6 @@ class kvfifo {
             if (empty())
                 throw std::invalid_argument("Invalid operation.");
             tryCopy();
-
             std::pair<K, V> element = (*elements).front();
             (*elements).pop_front();
             (*keys)[element.first].pop_front();
@@ -125,7 +126,6 @@ class kvfifo {
             if (!count(k))
                 throw std::invalid_argument("Invalid operation.");
             tryCopy();
-
             listIterator it = (*keys)[k].front();
             (*keys)[k].pop_front();
             (*elements).erase(it);
@@ -133,17 +133,11 @@ class kvfifo {
 
         void move_to_back(K const &k) {
             size_t size = count(k);
-            if (size == 0)
+            if (!size)
                 throw std::invalid_argument("Invalid operation.");
             tryCopy();
-            typename std::list<listIterator>::iterator it = (*keys)[k].begin();
-                for (size_t i = 0; i < size; ++i) {
-                    auto temp = std::move(**it);
-                    (*elements).erase(*it);
-                    (*elements).push_back(std::move(temp));
-                    *it = prev((*elements).end());
-                    it = next(it);
-                }
+            for (auto it : (*keys)[k])
+                (*elements).splice((*elements).end(), (*elements), it);
         }
 
         std::pair<K const &, V &> front() {
@@ -217,8 +211,9 @@ class kvfifo {
         }
 
         void clear() {
-            elements = std::make_shared<std::list<std::pair<K, V>>>();
-            keys = std::make_shared<std::map<K, std::list<listIterator>>>();
+            tryCopy();
+            (*elements).clear();
+            (*keys).clear();
         }
 };
 #endif
