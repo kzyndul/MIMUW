@@ -124,6 +124,8 @@ class kvfifo {
             std::pair<K, V> element = (*elements).front();
             (*elements).pop_front();
             (*keys)[element.first].pop_front();
+            if (!count(element.first))
+                (*keys).erase(element.first);
             referenced = false;
         }
 
@@ -134,6 +136,8 @@ class kvfifo {
             listIterator it = (*keys)[k].front();
             (*keys)[k].pop_front();
             (*elements).erase(it);
+            if (!count(k))
+                (*keys).erase(k);
             referenced = false;
         }
 
