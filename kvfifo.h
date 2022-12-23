@@ -8,7 +8,7 @@
 #include <iostream>
 #include <memory>
 
-template<typename K, typename V>
+template<typename K, typename V> requires std::totally_ordered<K> && std::regular<K> && std::copy_constructible<V>
 class kvfifo {
     private:
         using listIterator = typename std::list<std::pair<K, V>>::iterator;
@@ -42,6 +42,16 @@ class kvfifo {
                 makeCopy();
         }
 
+        static std::shared_ptr<std::list<std::pair<K, V>>> emptyElements() {
+            static const auto empty = std::make_shared<std::list<std::pair<K, V>>>();
+            return empty;
+        }
+
+        static std::shared_ptr<std::map<K, std::list<listIterator>>> emptyKeys() {
+            static const auto empty = std::make_shared<std::map<K, std::list<listIterator>>>();
+            return empty;
+        }
+
     public:
         class k_iterator : public mapIterator::const_iterator {
             public:
@@ -72,7 +82,13 @@ class kvfifo {
                 makeCopy();
         }
 
-        kvfifo(kvfifo &&other) noexcept = default;
+        kvfifo(kvfifo &&other) noexcept :
+                elements(std::move(other.elements)),
+                keys(std::move(other.keys)),
+                referenced(std::move(other.referenced)) {
+            other.elements = emptyElements();
+            other.keys = emptyKeys();
+        }
 
         kvfifo &operator=(kvfifo other) {
             if (elements == other.elements && keys == other.keys)
