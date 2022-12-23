@@ -33,6 +33,7 @@ class kvfifo {
              } catch(...) {
                 elements = oldElements;
                 keys = oldKeys;
+                throw;
              }
         }
 
@@ -75,18 +76,13 @@ class kvfifo {
             } catch (...) {
                 elements = oldElements;
                 keys = oldKeys;
+                throw;
             }
         }
 
-        kvfifo(kvfifo &&other) noexcept :
-            elements(std::move(other.elements)),
-            keys(std::move(other.keys)),
-            referenced(std::move(other.referenced)) {
-            other.elements = std::make_shared<std::list<std::pair<K, V>>>();
-            other.keys = std::make_shared<std::map<K, std::list<listIterator>>>();
-        }
+        kvfifo(kvfifo &&other) noexcept = default;
 
-        kvfifo &operator=(kvfifo other) noexcept {
+        kvfifo &operator=(kvfifo other) {
             if (elements == other.elements && keys == other.keys)
                 return *this;
 
@@ -98,11 +94,12 @@ class kvfifo {
                 // FIXME referenced = false;
                 if (other.referenced)
                     makeCopy();
+                return *this;
             } catch (...) {
                 elements = oldElements;
                 keys = oldKeys;
+                throw;
             }
-            return *this;
         }
 
         void push(K const &k, V const &v) {
@@ -111,10 +108,13 @@ class kvfifo {
             listIterator it = prev((*elements).end());
             try {
                 (*keys)[k].push_back(it);
+                referenced = false;
             } catch (...) {
                 (*elements).erase(it);
+                if (!count(k))
+                    (*keys).erase(k);
+                throw;
             }
-            referenced = false;
         }
 
         void pop() {
