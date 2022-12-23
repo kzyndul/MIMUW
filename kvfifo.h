@@ -15,7 +15,7 @@ class kvfifo {
         using mapIterator = typename std::map<K, std::list<listIterator>>;
         std::shared_ptr<std::list<std::pair<K, V>>> elements;
         std::shared_ptr<std::map<K, std::list<listIterator>>> keys;
-        bool referenced;
+        bool referenced = false;
 
         void makeCopy() {
             std::shared_ptr<std::list<std::pair<K, V>>> oldElements = elements;
@@ -50,11 +50,11 @@ class kvfifo {
                 }
         };
 
-        k_iterator k_begin() noexcept {
+        k_iterator k_begin() const noexcept {
             return k_iterator(keys->cbegin());
         }
 
-        k_iterator k_end() noexcept {
+        k_iterator k_end() const noexcept {
             return k_iterator(keys->cend());
         }
 
@@ -69,6 +69,7 @@ class kvfifo {
             try {
                 elements = other.elements;
                 keys = other.keys;
+                // FIXME referenced = false;
                 if (other.referenced)
                     makeCopy();
             } catch (...) {
@@ -80,7 +81,10 @@ class kvfifo {
         kvfifo(kvfifo &&other) noexcept :
             elements(std::move(other.elements)),
             keys(std::move(other.keys)),
-            referenced(std::move(other.referenced)) {}
+            referenced(std::move(other.referenced)) {
+            other.elements = std::make_shared<std::list<std::pair<K, V>>>();
+            other.keys = std::make_shared<std::map<K, std::list<listIterator>>>();
+        }
 
         kvfifo &operator=(kvfifo other) noexcept {
             if (elements == other.elements && keys == other.keys)
@@ -91,6 +95,7 @@ class kvfifo {
             try {
                 elements = other.elements;
                 keys = other.keys;
+                // FIXME referenced = false;
                 if (other.referenced)
                     makeCopy();
             } catch (...) {
@@ -109,6 +114,7 @@ class kvfifo {
             } catch (...) {
                 (*elements).erase(it);
             }
+            referenced = false;
         }
 
         void pop() {
@@ -118,6 +124,7 @@ class kvfifo {
             std::pair<K, V> element = (*elements).front();
             (*elements).pop_front();
             (*keys)[element.first].pop_front();
+            referenced = false;
         }
 
         void pop(K const &k) {
@@ -127,6 +134,7 @@ class kvfifo {
             listIterator it = (*keys)[k].front();
             (*keys)[k].pop_front();
             (*elements).erase(it);
+            referenced = false;
         }
 
         void move_to_back(K const &k) {
@@ -136,6 +144,7 @@ class kvfifo {
             tryCopy();
             for (auto it : (*keys)[k])
                 (*elements).splice((*elements).end(), (*elements), it);
+            referenced = false;
         }
 
         std::pair<K const &, V &> front() {
