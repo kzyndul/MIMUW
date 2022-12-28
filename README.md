@@ -1,2 +1,5 @@
+# Języki i Narzędzia Programowania
 
-Rozwiazanie zadania 1 JNiP 2022.
+<b> Zadania pierwsze w roku 2022 </b> <br />
+<b> Autorzy: Kuba Adamiak, Antoni Stachowski, Krzysztof Żyndul </b>
+
