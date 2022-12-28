@@ -1,1 +1,5 @@
-# JNP-zadanie4
+# Języki i Narzędzia Programowania
+
+<b> Zadania pierwsze w roku 2022 </b> <br />
+<b> Autorzy: Dominik Mandes, Kuba Adamiak, Krzysztof Żyndul </b>
+
