@@ -7,6 +7,7 @@
 #include <vector>
 #include <list>
 #include <unordered_map>
+#include <iostream>
 
 class Gracz {
     std::string imie;
@@ -28,15 +29,42 @@ public:
 
     bool czeka ()
     {
-        return (ile_czeka > 0);
+        ile_czeka = std::max(ile_czeka - 1, 0);
+        return ile_czeka;
     }
 
-    void pomin_kolejke ()
+//    bool czeka ()
+//    {
+//        return (ile_czeka > 0);
+//    }
+//
+//    void pomin_kolejke ()
+//    {
+//        if (ile_czeka > 0)
+//        {
+//            --ile_czeka;
+//        }
+//    }
+
+    const char* status()
     {
-        if (ile_czeka > 0)
+        if (bankrut())
         {
-            --ile_czeka;
+            return "*** bankrut ***";
         }
+        else if (ile_czeka)
+        {
+            return "*** czekanie: ***"; // TODO handle type conversion
+        }
+        else
+        {
+            return "w grze";
+        }
+    }
+
+    int wynik()
+    {
+        return pieniadze;
     }
 
     bool bankrut ()
@@ -55,10 +83,20 @@ class Pole {
 protected:
     const std::string nazwa;
 public:
-    virtual void stan_na_polu(Gracz &zawodnik) = 0;
+    virtual void stan_na_polu(Gracz &zawodnik)
+    {
+        (void)zawodnik;
+    }
 
     virtual void przejdz_przez_pole(Gracz &zawodnik)
-    {}
+    {
+        (void)zawodnik;
+    }
+
+    std::string podaj_nazwe()
+    {
+        return nazwa;
+    }
 
     explicit Pole (std::string nazwa) : nazwa(std::move(nazwa)) {}
 
@@ -72,6 +110,7 @@ public:
     {
         zawodnik.czekaj(ile);
     }
+
     Pole_czekajace (std::string nazwa, int ile) : Pole(std::move(nazwa)), ile(ile) {}
 
     ~Pole_czekajace() override = default;
@@ -81,8 +120,6 @@ public:
 class Wolne : public Pole {
 public:
     explicit Wolne(std::string nazwa) : Pole(std::move(nazwa)) {}
-
-    void stan_na_polu(Gracz &zawodnik) override {}
 
     ~Wolne() override = default;
 
@@ -104,6 +141,7 @@ public:
     {
         zawodnik.rozlicz(ile);
     }
+
     Przy_wejsciu(std::string nazwa, int ile) : Pole_pienizne(std::move(nazwa), ile) {}
 
     ~Przy_wejsciu() override = default;
@@ -161,6 +199,7 @@ public:
         }
         ktory = (ktory + 1) % co_ile;
     }
+
     Okresowe(std::string nazwa, int ile, int co_ile) : Pole_pienizne(std::move(nazwa), ile), co_ile(co_ile), ktory(0) {}
 
     ~Okresowe() override = default;
@@ -170,8 +209,6 @@ class Plansza {
     std::vector<std::shared_ptr<Pole>> pola;
     int rozmiar_planszy;
     std::unordered_map<std::string, int> pozycja;
-
-
 
     int rzuc_koscmi (std::list<std::shared_ptr<Die>> &kostki)
     {
@@ -189,14 +226,21 @@ public:
     Plansza &operator=(Plansza other) noexcept {
             pola = other.pola;
             rozmiar_planszy = other.rozmiar_planszy;
+            return *this;
     }
 
+    std::shared_ptr<Pole> podaj_pole (Gracz &g)
+    {
+        return pola[pozycja[g.get_imie()]];
+    }
 
     void dodaj_pole (std::shared_ptr<Pole> pole)
     {
         pola.push_back(pole);
         ++rozmiar_planszy;
     }
+
+
 
     void inicjuj (std::list<Gracz> &gracze)
     {
@@ -208,32 +252,28 @@ public:
 
     bool wykonaj_ruch (Gracz &gracz, std::list<std::shared_ptr<Die>> &kostki)
     {
-        gracz.pomin_kolejke();
-        if (gracz.czeka())
+        if (!gracz.czeka())
         {
-            return false;
-        }
+            int obecna_pozycja = pozycja[gracz.get_imie()];
+            auto ile_oczek = rzuc_koscmi(kostki);
 
-        int obecna_pozycja = pozycja[gracz.get_imie()];
-        auto ile_oczek = rzuc_koscmi(kostki);
-        for (int i = 0; i < ile_oczek - 1; ++i)
-        {
+            for (int i = 0; i < ile_oczek - 1; ++i) {
+                obecna_pozycja = (obecna_pozycja + 1) % rozmiar_planszy;
+                pola[obecna_pozycja]->przejdz_przez_pole(gracz);
+                if (gracz.bankrut()) {
+                    pozycja.erase(gracz.get_imie());
+                    return true;
+                }
+            }
+
             obecna_pozycja = (obecna_pozycja + 1) % rozmiar_planszy;
-            pola[obecna_pozycja]->przejdz_przez_pole(gracz);
-            if (gracz.bankrut())
-            {
+            pola[obecna_pozycja]->stan_na_polu(gracz);
+            if (gracz.bankrut()) {
                 pozycja.erase(gracz.get_imie());
                 return true;
             }
+            pozycja[gracz.get_imie()] = obecna_pozycja;
         }
-        obecna_pozycja = (obecna_pozycja + 1) % rozmiar_planszy;
-        pola[obecna_pozycja]->stan_na_polu(gracz);
-        if (gracz.bankrut())
-        {
-            pozycja.erase(gracz.get_imie());
-            return true;
-        }
-        pozycja[gracz.get_imie()] = obecna_pozycja;
         return false;
     }
 };
@@ -245,19 +285,22 @@ class WorldCup2022 : public WorldCup {
     std::shared_ptr<ScoreBoard> tablica_wynikow;
 
 
-    bool jedna_runda ()
+    bool jedna_runda (int numer_rundy)
     {
+        tablica_wynikow->onRound(numer_rundy);
+
         auto it = gracze.begin();
         while (it != gracze.end() && gracze.size() > 1)
         {
             auto czy_bankrut = plansza.wykonaj_ruch(*it, kostki);
-            if (!czy_bankrut)
+            tablica_wynikow->onTurn(it->get_imie(), it->status(), plansza.podaj_pole(*it)->podaj_nazwe(), std::max(it->wynik(), 0));
+            if (czy_bankrut)
             {
-                ++it;
+                it = gracze.erase(it);
             }
             else
             {
-                it = gracze.erase(it);
+                ++it;
             }
         }
         return (gracze.size() == 1);
@@ -284,14 +327,20 @@ public:
     void play(unsigned int rounds) override
     {
         plansza.inicjuj(gracze);
-        for (int i = 0; i < rounds; ++i)
+        bool stop = false;
+        for (unsigned int i = 0; i < rounds && !stop; ++i)
         {
-            if (jedna_runda())
-            {
-                break;
-            }
+            stop = jedna_runda(i);
         }
-        // znajdz zwyciesce
+
+        Gracz top_gracz = gracze.front();
+        for (auto iter = gracze.begin(); iter != gracze.end(); ++iter)
+        {
+            if (iter->wynik() > top_gracz.wynik())
+                top_gracz = *iter;
+        }
+        tablica_wynikow->onWin(top_gracz.get_imie());
+
     }
 
     WorldCup2022()
