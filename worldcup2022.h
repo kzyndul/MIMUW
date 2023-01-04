@@ -46,7 +46,7 @@ public:
 //        }
 //    }
 
-    const char* status()
+    std::string status()
     {
         if (bankrut())
         {
@@ -54,7 +54,9 @@ public:
         }
         else if (ile_czeka)
         {
-            return "*** czekanie: ***"; // TODO handle type conversion
+            std::stringstream ss;
+            ss << ile_czeka;
+            return "*** czekanie: " + ss.str() + " ***";
         }
         else
         {
@@ -250,6 +252,11 @@ public:
         }
     }
 
+    void usun_gracza (std::string imie)
+    {
+        pozycja.erase(imie);
+    }
+
     bool wykonaj_ruch (Gracz &gracz, std::list<std::shared_ptr<Die>> &kostki)
     {
         if (!gracz.czeka())
@@ -261,7 +268,8 @@ public:
                 obecna_pozycja = (obecna_pozycja + 1) % rozmiar_planszy;
                 pola[obecna_pozycja]->przejdz_przez_pole(gracz);
                 if (gracz.bankrut()) {
-                    pozycja.erase(gracz.get_imie());
+                    obecna_pozycja = (obecna_pozycja + ile_oczek - 1 - i) % rozmiar_planszy; // przesuwamy na daną pozycję
+                    pozycja[gracz.get_imie()] = obecna_pozycja;
                     return true;
                 }
             }
@@ -269,7 +277,8 @@ public:
             obecna_pozycja = (obecna_pozycja + 1) % rozmiar_planszy;
             pola[obecna_pozycja]->stan_na_polu(gracz);
             if (gracz.bankrut()) {
-                pozycja.erase(gracz.get_imie());
+                pozycja[gracz.get_imie()] = obecna_pozycja;
+//                pozycja.erase(gracz.get_imie());
                 return true;
             }
             pozycja[gracz.get_imie()] = obecna_pozycja;
@@ -296,6 +305,7 @@ class WorldCup2022 : public WorldCup {
             tablica_wynikow->onTurn(it->get_imie(), it->status(), plansza.podaj_pole(*it)->podaj_nazwe(), std::max(it->wynik(), 0));
             if (czy_bankrut)
             {
+                plansza.usun_gracza(it->get_imie());
                 it = gracze.erase(it);
             }
             else
@@ -339,6 +349,7 @@ public:
             if (iter->wynik() > top_gracz.wynik())
                 top_gracz = *iter;
         }
+
         tablica_wynikow->onWin(top_gracz.get_imie());
 
     }
@@ -346,18 +357,18 @@ public:
     WorldCup2022()
     {
         Plansza temp = Plansza();
-        temp.dodaj_pole(std::make_shared<Start>("początek sezonu", 50));
-        temp.dodaj_pole(std::make_shared<Mecz>("mecz z San Marino", -160, -1));
-        temp.dodaj_pole(std::make_shared<Wolne>("dzień wolny od treningu"));
-        temp.dodaj_pole(std::make_shared<Mecz>("mecz z Liechtensteinem", -220, -1));
-        temp.dodaj_pole(std::make_shared<Pole_czekajace>("żółta kartka", 3));
-        temp.dodaj_pole(std::make_shared<Mecz>("mecz z Meksykiem", -300, -2.5));
-        temp.dodaj_pole(std::make_shared<Mecz>("mecz z Arabią Saudyjską", -280, -2.5));
-        temp.dodaj_pole(std::make_shared<Okresowe>("bukmacher", 100, 3));
-        temp.dodaj_pole(std::make_shared<Mecz>("mecz z Argentyną", -250, -2.5));
-        temp.dodaj_pole(std::make_shared<Przy_wejsciu>("gol", 120));
-        temp.dodaj_pole(std::make_shared<Mecz>("mecz z Francją", -400, -4));
-        temp.dodaj_pole(std::make_shared<Przy_wejsciu>("rzut karny", -180));
+        temp.dodaj_pole(std::make_shared<Start>("Początek sezonu", 50));
+        temp.dodaj_pole(std::make_shared<Mecz>("Mecz z San Marino", -160, -1));
+        temp.dodaj_pole(std::make_shared<Wolne>("Dzień wolny od treningu"));
+        temp.dodaj_pole(std::make_shared<Mecz>("Mecz z Liechtensteinem", -220, -1));
+        temp.dodaj_pole(std::make_shared<Pole_czekajace>("Żółta kartka", 3));
+        temp.dodaj_pole(std::make_shared<Mecz>("Mecz z Meksykiem", -300, -2.5));
+        temp.dodaj_pole(std::make_shared<Mecz>("Mecz z Arabią Saudyjską", -280, -2.5));
+        temp.dodaj_pole(std::make_shared<Okresowe>("Bukmacher", 100, 3));
+        temp.dodaj_pole(std::make_shared<Mecz>("Mecz z Argentyną", -250, -2.5));
+        temp.dodaj_pole(std::make_shared<Przy_wejsciu>("Gol", 120));
+        temp.dodaj_pole(std::make_shared<Mecz>("Mecz z Francją", -400, -4));
+        temp.dodaj_pole(std::make_shared<Przy_wejsciu>("Rzut karny", -180));
         plansza = std::move(temp);
     }
 };
