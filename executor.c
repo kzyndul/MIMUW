@@ -16,11 +16,17 @@
 #define OUT_SIZE 1022
 
 int numer_zadania = 0;
-pthread_mutex_t mutex_pisze;
 
+
+pthread_mutex_t mutex_pisze;
 bool pisze = false;
 
-atomic_int zakoncz = 0;
+pthread_cond_t zakonczylem_proces;
+pthread_cond_t polecenie;
+pthread_mutex_t mutex;
+
+bool wykonuje_polecenie = true;
+int zakonczone_procesy = 0;
 
 struct Para {
     int numer;
@@ -44,6 +50,54 @@ struct Para dane_err[LICZBA_ZADAN];
 pthread_t threads[2 * LICZBA_ZADAN];
 pthread_t zakonczenie[LICZBA_ZADAN];
 pid_t procesy[LICZBA_ZADAN];
+
+void polecenie_wejdz()
+{
+    ASSERT_ZERO(pthread_mutex_lock(&mutex));
+    while (zakonczone_procesy)
+    {
+        ASSERT_ZERO(pthread_cond_wait(&polecenie, &mutex));
+    }
+    wykonuje_polecenie = true;
+    ASSERT_ZERO(pthread_mutex_unlock(&mutex));
+
+}
+
+void polecenie_wyjdz()
+{
+    ASSERT_ZERO(pthread_mutex_lock(&mutex));
+    wykonuje_polecenie = false;
+    ASSERT_ZERO(pthread_cond_signal(&zakonczylem_proces));
+    ASSERT_ZERO(pthread_mutex_unlock(&mutex));
+}
+
+void zakonczony_wejdz()
+{
+    ASSERT_ZERO(pthread_mutex_lock(&mutex));
+    ++zakonczone_procesy;
+    while (wykonuje_polecenie)
+    {
+        ASSERT_ZERO(pthread_cond_wait(&zakonczylem_proces, &mutex));
+    }
+    ASSERT_ZERO(pthread_mutex_unlock(&mutex));
+}
+
+void zakoncz_wyjdz()
+{
+    ASSERT_ZERO(pthread_mutex_lock(&mutex));
+    --zakonczone_procesy;
+    if (!zakonczone_procesy)
+    {
+        ASSERT_ZERO(pthread_cond_signal(&polecenie));
+    }
+    else
+    {
+        ASSERT_ZERO(pthread_cond_signal(&zakonczylem_proces));
+    }
+    ASSERT_ZERO(pthread_mutex_unlock(&mutex));
+}
+
+
 
 void wypisz_wejdz()
 {
@@ -150,7 +204,7 @@ void *zapisuj_err(void *data)
     char c;
     int i = 0;
     char obecny[OUT_SIZE];
-    while (read(argumenty->deskryptor, &c, 1) && !zakoncz)
+    while (read(argumenty->deskryptor, &c, 1))
     {
         if (c == '\n')
         {
@@ -177,7 +231,7 @@ void *na_zakonczenie(void *dane)
     pid_t pid = procesy[*numer];
     int status;
     waitpid(pid, &status, 0);
-
+    zakonczony_wejdz();
     if (WIFSIGNALED(status))
     {
         wypisz_wejdz();
@@ -190,6 +244,7 @@ void *na_zakonczenie(void *dane)
         printf("Task %d ended: status %d.\n", *numer, WEXITSTATUS(status));
         wypisz_wyjdz();
     }
+    zakoncz_wyjdz();
     return 0;
 }
 
@@ -203,7 +258,6 @@ void run(char **input)
     set_close_on_exec(pipe_dsc_out[0], true);
     set_close_on_exec(pipe_dsc_err[0], true);
 
-
     pid_t pid = fork();
     ASSERT_SYS_OK(pid);
     if (!pid)
@@ -215,9 +269,6 @@ void run(char **input)
         ASSERT_SYS_OK(dup2(pipe_dsc_out[1], STDOUT_FILENO));
         ASSERT_SYS_OK(dup2(pipe_dsc_err[1], STDERR_FILENO));
 
-
-//        ASSERT_SYS_OK(close(STDIN_FILENO));
-    
         ASSERT_SYS_OK(close(pipe_dsc_out[0]));
         ASSERT_SYS_OK(close(pipe_dsc_err[0]));
         ASSERT_SYS_OK(close(pipe_dsc_out[1]));
@@ -231,6 +282,7 @@ void run(char **input)
         wypisz_wejdz();
         printf("Task %d started: pid %d.\n", numer_zadania, pid);
         wypisz_wyjdz();
+
 
         struct Para dane_out_temp;
         dane_out_temp.numer = numer_zadania;
@@ -273,9 +325,7 @@ void err(char **input)
 {
     int zadanie = zamien(input[1]);
     wejdz_err(zadanie);
-    wypisz_wejdz();
     printf("Task %d stderr: '%s'.\n", zadanie, wyjscie_diagnostyczne[zadanie]);
-    wypisz_wyjdz();
     wyjdz_err(zadanie);
 }
 
@@ -295,56 +345,11 @@ void czekaj(char **input)
 
 void quit(void)
 {
-    zakoncz = 1;
     for (int i = 0; i < numer_zadania; ++i)
     {
         kill(procesy[i], SIGKILL);
     }
-}
 
-int main(void)
-{
-    ASSERT_ZERO(pthread_mutex_init(&mutex_pisze, NULL));
-    for (int i = 0; i < LICZBA_ZADAN; ++i)
-    {
-        ASSERT_ZERO(pthread_mutex_init(&mutex_out[i], NULL));
-        ASSERT_ZERO(pthread_mutex_init(&mutex_err[i], NULL));
-        test[i] = i;
-        robi_err[i] = false;
-        robi_out[i] = false;
-    }
-
-    char linia[IN_SIZE];
-    char **linia_podzielona;
-    while (read_line(linia, IN_SIZE, stdin) && !zakoncz)
-    {
-        linia_podzielona = split_string(linia);
-        switch (linia_podzielona[0][0])
-        {
-            case 'r':
-                run(linia_podzielona);
-                break;
-            case 'o':
-                out(linia_podzielona);
-                break;
-            case 'e':
-                err(linia_podzielona);
-                break;
-            case 'k':
-                zabij(linia_podzielona);
-                break;
-            case 's':
-                czekaj(linia_podzielona);
-                break;
-            case 'q':
-                quit();
-            default:
-                break;
-        }
-        free_split_string(linia_podzielona);
-    }
-
-    quit();
     for (int i = 0; i < 2 * numer_zadania; ++i)
     {
         ASSERT_ZERO(pthread_join(threads[i], NULL));
@@ -356,10 +361,85 @@ int main(void)
     }
 
     ASSERT_ZERO(pthread_mutex_destroy(&mutex_pisze));
+    ASSERT_ZERO(pthread_mutex_destroy(&mutex));
+    ASSERT_ZERO(pthread_cond_destroy(&polecenie));
+    ASSERT_ZERO(pthread_cond_destroy(&zakonczylem_proces));
     for (int i = 0; i < LICZBA_ZADAN; ++i)
     {
         ASSERT_ZERO(pthread_mutex_destroy(&mutex_out[i]));
         ASSERT_ZERO(pthread_mutex_destroy(&mutex_err[i]));
     }
+    exit(0);
+}
+
+int main(void)
+{
+setbuf(stdout, NULL);
+    ASSERT_ZERO(pthread_mutex_init(&mutex_pisze, NULL));
+    ASSERT_ZERO(pthread_mutex_init(&mutex, NULL));
+    ASSERT_ZERO(pthread_cond_init(&polecenie, NULL));
+    ASSERT_ZERO(pthread_cond_init(&zakonczylem_proces, NULL));
+
+
+    for (int i = 0; i < LICZBA_ZADAN; ++i)
+    {
+        wyjscie_diagnostyczne[i][0] = '\0';
+        wyjscie[i][0] = '\0';
+        ASSERT_ZERO(pthread_mutex_init(&mutex_out[i], NULL));
+        ASSERT_ZERO(pthread_mutex_init(&mutex_err[i], NULL));
+        test[i] = i;
+        robi_err[i] = false;    
+        robi_out[i] = false;
+    }
+
+    char linia[IN_SIZE];
+    char **linia_podzielona;
+    while (read_line(linia, IN_SIZE, stdin))
+    {
+        linia_podzielona = split_string(linia);
+        switch (linia_podzielona[0][0])
+        {
+            case 'r':
+                polecenie_wejdz();
+                run(linia_podzielona);
+                polecenie_wyjdz();
+                break;
+            case 'o':
+                polecenie_wejdz();
+
+                out(linia_podzielona);
+                polecenie_wyjdz();
+
+                break;
+            case 'e':
+                polecenie_wejdz();
+
+                err(linia_podzielona);
+                polecenie_wyjdz();
+
+                break;
+            case 'k':
+                polecenie_wejdz();
+
+                zabij(linia_podzielona);
+                polecenie_wyjdz();
+
+                break;
+            case 's':
+                polecenie_wejdz();
+
+                czekaj(linia_podzielona);
+                polecenie_wyjdz();
+
+                break;
+            case 'q':
+                free_split_string(linia_podzielona);
+                quit();
+            default:
+                break;
+        }
+        free_split_string(linia_podzielona);
+    }
+    quit();
     return 0;
 }
