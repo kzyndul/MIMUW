@@ -9,74 +9,86 @@
 #include <unordered_map>
 #include <iostream>
 
+class TooManyDiceException : public std::exception {
+public:
+    char *what() {
+        return nullptr;
+    }
+};
+
+class TooFewDiceException : public std::exception {
+public:
+    char *what() {
+        return nullptr;
+    }
+};
+
+class TooManyPlayersException : public std::exception {
+public:
+    char *what() {
+        return nullptr;
+    }
+};
+
+class TooFewPlayersException : public std::exception {
+public:
+    char *what() {
+        return nullptr;
+    }
+};
+
+
 class Gracz {
     std::string imie;
     int pieniadze;
     int ile_czeka;
+    int id;
 public:
-    explicit Gracz(std::string name) : imie(std::move(name)), pieniadze(1000), ile_czeka(0)
-    {}
+    explicit Gracz(std::string name) : imie(std::move(name)), pieniadze(1000), ile_czeka(0) {}
 
-    void rozlicz(int ile)
-    {
+    void set_id(int new_id) {
+        id = new_id;
+    }
+
+    int get_id() {
+        return id;
+    }
+
+    void rozlicz(int ile) {
         pieniadze += ile;
     }
 
-    void czekaj(int ile)
-    {
+    void czekaj(int ile) {
         ile_czeka = ile;
     }
 
-    bool czeka ()
-    {
+    bool czeka() {
         ile_czeka = std::max(ile_czeka - 1, 0);
         return ile_czeka;
     }
 
-//    bool czeka ()
-//    {
-//        return (ile_czeka > 0);
-//    }
-//
-//    void pomin_kolejke ()
-//    {
-//        if (ile_czeka > 0)
-//        {
-//            --ile_czeka;
-//        }
-//    }
-
-    std::string status()
-    {
-        if (bankrut())
-        {
+    std::string status() {
+        if (bankrut()) {
             return "*** bankrut ***";
-        }
-        else if (ile_czeka)
-        {
+        } else if (ile_czeka) {
             std::stringstream ss;
             ss << ile_czeka;
             return "*** czekanie: " + ss.str() + " ***";
-        }
-        else
-        {
+        } else {
             return "w grze";
         }
     }
 
-    int wynik()
-    {
+    int wynik() {
         return pieniadze;
     }
 
-    bool bankrut ()
-    {
+    bool bankrut() {
         return (pieniadze < 0);
     }
 
 
-    std::string get_imie ()
-    {
+    std::string get_imie() {
         return imie;
     }
 };
@@ -85,22 +97,19 @@ class Pole {
 protected:
     const std::string nazwa;
 public:
-    virtual void stan_na_polu(Gracz &zawodnik)
-    {
-        (void)zawodnik;
+    virtual void stan_na_polu(Gracz &zawodnik) {
+        (void) zawodnik;
     }
 
-    virtual void przejdz_przez_pole(Gracz &zawodnik)
-    {
-        (void)zawodnik;
+    virtual void przejdz_przez_pole(Gracz &zawodnik) {
+        (void) zawodnik;
     }
 
-    std::string podaj_nazwe()
-    {
+    std::string podaj_nazwe() {
         return nazwa;
     }
 
-    explicit Pole (std::string nazwa) : nazwa(std::move(nazwa)) {}
+    explicit Pole(std::string nazwa) : nazwa(std::move(nazwa)) {}
 
     virtual ~Pole() = default;
 };
@@ -108,12 +117,11 @@ public:
 class Pole_czekajace : public Pole {
     int ile;
 public:
-    void stan_na_polu(Gracz &zawodnik) override
-    {
+    void stan_na_polu(Gracz &zawodnik) override {
         zawodnik.czekaj(ile);
     }
 
-    Pole_czekajace (std::string nazwa, int ile) : Pole(std::move(nazwa)), ile(ile) {}
+    Pole_czekajace(std::string nazwa, int ile) : Pole(std::move(nazwa)), ile(ile) {}
 
     ~Pole_czekajace() override = default;
 
@@ -139,8 +147,7 @@ public:
 
 class Przy_wejsciu : public Pole_pienizne {
 public:
-    void stan_na_polu(Gracz &zawodnik) override
-    {
+    void stan_na_polu(Gracz &zawodnik) override {
         zawodnik.rozlicz(ile);
     }
 
@@ -153,50 +160,31 @@ class Mecz : public Pole_pienizne {
     int pula;
     float jaki_mecz;
 public:
-    void przejdz_przez_pole(Gracz &zawodnik) override
-    {
+    void przejdz_przez_pole(Gracz &zawodnik) override {
         zawodnik.rozlicz(ile);
         pula += ile;
     }
 
-    void stan_na_polu(Gracz &zawodnik) override
-    {
+    void stan_na_polu(Gracz &zawodnik) override {
         zawodnik.rozlicz(pula * jaki_mecz);
         pula = 0;
     }
 
-    Mecz(std::string nazwa, int ile, float jaki_mecz) : Pole_pienizne(std::move(nazwa), ile), pula(0), jaki_mecz(jaki_mecz) {}
+    Mecz(std::string nazwa, int ile, float jaki_mecz) : Pole_pienizne(std::move(nazwa), ile), pula(0),
+                                                        jaki_mecz(jaki_mecz) {}
 
 
 };
-
-class Start : public Przy_wejsciu {
-public:
-    void przejdz_przez_pole(Gracz &zawodnik) override
-    {
-        zawodnik.rozlicz(ile);
-    }
-    Start(std::string nazwa, int ile) : Przy_wejsciu(std::move(nazwa), ile) {}
-
-    ~Start() override = default;
-};
-
-
-
 
 class Okresowe : public Pole_pienizne {
 protected:
     int co_ile;
     int ktory;
 public:
-    void stan_na_polu(Gracz &zawodnik) override
-    {
-        if (ktory == 0)
-        {
+    void stan_na_polu(Gracz &zawodnik) override {
+        if (ktory == 0) {
             zawodnik.rozlicz(ile);
-        }
-        else
-        {
+        } else {
             zawodnik.rozlicz(-ile);
         }
         ktory = (ktory + 1) % co_ile;
@@ -210,66 +198,59 @@ public:
 class Plansza {
     std::vector<std::shared_ptr<Pole>> pola;
     int rozmiar_planszy;
-    std::unordered_map<std::string, int> pozycja;
+    std::unordered_map<int, int> pozycja;
 
-    int rzuc_koscmi (std::list<std::shared_ptr<Die>> &kostki)
-    {
+    int rzuc_koscmi(std::list<std::shared_ptr<Die>> &kostki) {
         int sum = 0;
-        for (auto it = kostki.begin(); it != kostki.end(); ++it)
-        {
+        for (auto it = kostki.begin(); it != kostki.end(); ++it) {
             sum += it->get()->roll();
         }
         return sum;
     }
 
 public:
-    Plansza(Plansza &&other)  noexcept : pola(std::move(other.pola)), rozmiar_planszy(other.rozmiar_planszy) {}
+    Plansza(Plansza &&other) noexcept: pola(std::move(other.pola)), rozmiar_planszy(other.rozmiar_planszy) {}
+
     Plansza() : rozmiar_planszy(0) {}
+
     Plansza &operator=(Plansza other) noexcept {
-            pola = other.pola;
-            rozmiar_planszy = other.rozmiar_planszy;
-            return *this;
+        pola = other.pola;
+        rozmiar_planszy = other.rozmiar_planszy;
+        return *this;
     }
 
-    std::shared_ptr<Pole> podaj_pole (Gracz &g)
-    {
-        return pola[pozycja[g.get_imie()]];
+    std::shared_ptr<Pole> podaj_pole(Gracz &g) {
+        return pola[pozycja[g.get_id()]];
     }
 
-    void dodaj_pole (std::shared_ptr<Pole> pole)
-    {
+    void dodaj_pole(std::shared_ptr<Pole> pole) {
         pola.push_back(pole);
         ++rozmiar_planszy;
     }
 
 
-
-    void inicjuj (std::list<Gracz> &gracze)
-    {
-        for (Gracz g : gracze)
-        {
-            pozycja.insert({g.get_imie(), 0});
+    void inicjuj(std::list<Gracz> &gracze) {
+        for (Gracz g: gracze) {
+            pozycja.insert({g.get_id(), 0});
         }
     }
 
-    void usun_gracza (std::string imie)
-    {
-        pozycja.erase(imie);
+    void usun_gracza(int id) {
+        pozycja.erase(id);
     }
 
-    bool wykonaj_ruch (Gracz &gracz, std::list<std::shared_ptr<Die>> &kostki)
-    {
-        if (!gracz.czeka())
-        {
-            int obecna_pozycja = pozycja[gracz.get_imie()];
+    bool wykonaj_ruch(Gracz &gracz, std::list<std::shared_ptr<Die>> &kostki) {
+        if (!gracz.czeka()) {
+            int obecna_pozycja = pozycja[gracz.get_id()];
             auto ile_oczek = rzuc_koscmi(kostki);
 
             for (int i = 0; i < ile_oczek - 1; ++i) {
                 obecna_pozycja = (obecna_pozycja + 1) % rozmiar_planszy;
                 pola[obecna_pozycja]->przejdz_przez_pole(gracz);
                 if (gracz.bankrut()) {
-                    obecna_pozycja = (obecna_pozycja + ile_oczek - 1 - i) % rozmiar_planszy; // przesuwamy na daną pozycję
-                    pozycja[gracz.get_imie()] = obecna_pozycja;
+                    obecna_pozycja =
+                            (obecna_pozycja + ile_oczek - 1 - i) % rozmiar_planszy; // przesuwamy na daną pozycję
+                    pozycja[gracz.get_id()] = obecna_pozycja;
                     return true;
                 }
             }
@@ -277,11 +258,10 @@ public:
             obecna_pozycja = (obecna_pozycja + 1) % rozmiar_planszy;
             pola[obecna_pozycja]->stan_na_polu(gracz);
             if (gracz.bankrut()) {
-                pozycja[gracz.get_imie()] = obecna_pozycja;
-//                pozycja.erase(gracz.get_imie());
+                pozycja[gracz.get_id()] = obecna_pozycja;
                 return true;
             }
-            pozycja[gracz.get_imie()] = obecna_pozycja;
+            pozycja[gracz.get_id()] = obecna_pozycja;
         }
         return false;
     }
@@ -294,22 +274,18 @@ class WorldCup2022 : public WorldCup {
     std::shared_ptr<ScoreBoard> tablica_wynikow;
 
 
-    bool jedna_runda (int numer_rundy)
-    {
+    bool jedna_runda(int numer_rundy) {
         tablica_wynikow->onRound(numer_rundy);
 
         auto it = gracze.begin();
-        while (it != gracze.end() && gracze.size() > 1)
-        {
+        while (it != gracze.end() && gracze.size() > 1) {
             auto czy_bankrut = plansza.wykonaj_ruch(*it, kostki);
-            tablica_wynikow->onTurn(it->get_imie(), it->status(), plansza.podaj_pole(*it)->podaj_nazwe(), std::max(it->wynik(), 0));
-            if (czy_bankrut)
-            {
-                plansza.usun_gracza(it->get_imie());
+            tablica_wynikow->onTurn(it->get_imie(), it->status(), plansza.podaj_pole(*it)->podaj_nazwe(),
+                                    std::max(it->wynik(), 0));
+            if (czy_bankrut) {
+                plansza.usun_gracza(it->get_id());
                 it = gracze.erase(it);
-            }
-            else
-            {
+            } else {
                 ++it;
             }
         }
@@ -317,47 +293,49 @@ class WorldCup2022 : public WorldCup {
     }
 
 
-
 public:
-    void addDie(std::shared_ptr<Die> die) override
-    {
+    void addDie(std::shared_ptr<Die> die) override {
         kostki.push_back(die);
     }
 
-    void addPlayer(std::string const &name) override
-    {
+    void addPlayer(std::string const &name) override {
         gracze.emplace_back(name);
+        gracze.back().set_id(gracze.size());
     }
 
-    void setScoreBoard(std::shared_ptr<ScoreBoard> scoreboard) override
-    {
+    void setScoreBoard(std::shared_ptr<ScoreBoard> scoreboard) override {
         tablica_wynikow = scoreboard;
     }
 
-    void play(unsigned int rounds) override
-    {
+    void play(unsigned int rounds) override {
+        if (gracze.size() < 2)
+            throw new TooFewPlayersException();
+        if (gracze.size() > 11)
+            throw new TooManyPlayersException();
+        if (kostki.size() < 2)
+            throw new TooFewDiceException();
+        if (kostki.size() > 2)
+            throw new TooManyDiceException();
+
+
         plansza.inicjuj(gracze);
         bool stop = false;
-        for (unsigned int i = 0; i < rounds && !stop; ++i)
-        {
+        for (unsigned int i = 0; i < rounds && !stop; ++i) {
             stop = jedna_runda(i);
         }
 
         Gracz top_gracz = gracze.front();
-        for (auto iter = gracze.begin(); iter != gracze.end(); ++iter)
-        {
+        for (auto iter = gracze.begin(); iter != gracze.end(); ++iter) {
             if (iter->wynik() > top_gracz.wynik())
                 top_gracz = *iter;
         }
 
         tablica_wynikow->onWin(top_gracz.get_imie());
-
     }
 
-    WorldCup2022()
-    {
+    WorldCup2022() {
         Plansza temp = Plansza();
-        temp.dodaj_pole(std::make_shared<Start>("Początek sezonu", 50));
+        temp.dodaj_pole(std::make_shared<Przy_wejsciu>("Początek sezonu", 50));
         temp.dodaj_pole(std::make_shared<Mecz>("Mecz z San Marino", -160, -1));
         temp.dodaj_pole(std::make_shared<Wolne>("Dzień wolny od treningu"));
         temp.dodaj_pole(std::make_shared<Mecz>("Mecz z Liechtensteinem", -220, -1));
