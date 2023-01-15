@@ -9,33 +9,17 @@
 #include <unordered_map>
 #include <iostream>
 
-class TooManyDiceException : public std::exception {
+class WorldCupException : public std::exception {
 public:
     char *what() {
         return nullptr;
     }
 };
 
-class TooFewDiceException : public std::exception {
-public:
-    char *what() {
-        return nullptr;
-    }
-};
-
-class TooManyPlayersException : public std::exception {
-public:
-    char *what() {
-        return nullptr;
-    }
-};
-
-class TooFewPlayersException : public std::exception {
-public:
-    char *what() {
-        return nullptr;
-    }
-};
+class TooManyDiceException : WorldCupException {};
+class TooFewDiceException : WorldCupException {};
+class TooManyPlayersException : WorldCupException {};
+class TooFewPlayersException : WorldCupException {};
 
 
 class Gracz {
@@ -44,7 +28,7 @@ class Gracz {
     int ile_czeka;
     int id;
 public:
-    explicit Gracz(std::string name) : imie(std::move(name)), pieniadze(1000), ile_czeka(0) {}
+    explicit Gracz(std::string name) : imie(std::move(name)), pieniadze(1000), ile_czeka(0), id(0) {}
 
     void set_id(int new_id) {
         id = new_id;
@@ -79,11 +63,11 @@ public:
         }
     }
 
-    int wynik() {
+    int wynik() const {
         return pieniadze;
     }
 
-    bool bankrut() {
+    bool bankrut() const {
         return (pieniadze < 0);
     }
 
@@ -309,13 +293,13 @@ public:
 
     void play(unsigned int rounds) override {
         if (gracze.size() < 2)
-            throw new TooFewPlayersException();
+            throw TooFewPlayersException();
         if (gracze.size() > 11)
-            throw new TooManyPlayersException();
+            throw TooManyPlayersException();
         if (kostki.size() < 2)
-            throw new TooFewDiceException();
+            throw TooFewDiceException();
         if (kostki.size() > 2)
-            throw new TooManyDiceException();
+            throw TooManyDiceException();
 
 
         plansza.inicjuj(gracze);
