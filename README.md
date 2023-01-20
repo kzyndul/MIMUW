@@ -2,6 +2,8 @@
 <b> Rozwiązanie zadania 2 z PW MIMUW 2022 </b> <br />
 <b> Autor: Krzysztof Żyndul </b>
 
+<b> Ocena  / 10 </b>
+
 Zadanie 'Egzekutor'
 
 Sara rozwija pewien algorytm i pisze programy, które wykonują się długo, wypisując co jakiś czas informacje o postępach. Sara chciałaby testować swoje programy, wykonując je na różnych przykładach i sprawdzając co wypisują. Przykładów do sprawdzenia i wypisywanych informacji jest jednak bardzo dużo. Przygotuj dla Sary program executor, który w tym pomoże, wykonując wskazane zadania, sprawdzając ich ostatnie słowa (w trakcie działania programu) i ubijając je.
