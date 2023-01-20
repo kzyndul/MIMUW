@@ -1,4 +1,5 @@
-# Pw-Zadanie1
-Zadanie zaliczeniowe PW 2022
+# Programowanie współbieżne
+<b> Rozwiązanie zadania 1 z PW MIMUW 2022 </b> <br />
+<b> Autor: Krzysztof Żyndul </b>
 
-Ocena 7.5 / 10
+<b> Ocena 7.5 / 10 </b>
