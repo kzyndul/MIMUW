@@ -7,19 +7,19 @@
 #include <vector>
 #include <list>
 #include <unordered_map>
-#include <iostream>
+#include<sstream>
 
 class WorldCupException : public std::exception {
 public:
-    char *what() {
+    const char *what() const throw() {
         return nullptr;
     }
 };
 
-class TooManyDiceException : WorldCupException {};
-class TooFewDiceException : WorldCupException {};
-class TooManyPlayersException : WorldCupException {};
-class TooFewPlayersException : WorldCupException {};
+class TooManyDiceException : public WorldCupException {};
+class TooFewDiceException : public WorldCupException {};
+class TooManyPlayersException : public WorldCupException {};
+class TooFewPlayersException : public WorldCupException {};
 
 
 class Gracz {
@@ -139,6 +139,23 @@ public:
 
     ~Przy_wejsciu() override = default;
 };
+
+class Start : public Przy_wejsciu {
+public:
+    void stan_na_polu(Gracz &zawodnik) override {
+        zawodnik.rozlicz(ile);
+    }
+
+    void przejdz_przez_pole(Gracz &zawodnik) override {
+        zawodnik.rozlicz(ile);
+    }
+
+    Start(std::string nazwa, int ile) : Przy_wejsciu(std::move(nazwa), ile) {}
+
+
+    ~Start() override = default;
+};
+
 
 class Mecz : public Pole_pienizne {
     int pula;
@@ -319,7 +336,7 @@ public:
 
     WorldCup2022() {
         Plansza temp = Plansza();
-        temp.dodaj_pole(std::make_shared<Przy_wejsciu>("Początek sezonu", 50));
+        temp.dodaj_pole(std::make_shared<Start>("Początek sezonu", 50));
         temp.dodaj_pole(std::make_shared<Mecz>("Mecz z San Marino", -160, -1));
         temp.dodaj_pole(std::make_shared<Wolne>("Dzień wolny od treningu"));
         temp.dodaj_pole(std::make_shared<Mecz>("Mecz z Liechtensteinem", -220, -1));
