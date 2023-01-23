@@ -331,7 +331,16 @@ public:
                 top_gracz = *iter;
         }
 
-        tablica_wynikow->onWin(top_gracz.get_imie());
+        std::vector<Gracz> zwyciezcy;
+        for (auto iter = gracze.begin(); iter != gracze.end(); ++iter) {
+            if (iter->wynik() == top_gracz.wynik())
+                zwyciezcy.push_back(*iter);
+        }
+
+
+        for (Gracz gracz : zwyciezcy) {
+            tablica_wynikow->onWin(gracz.get_imie());
+        }
     }
 
     WorldCup2022() {
