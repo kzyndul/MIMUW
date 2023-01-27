@@ -31,7 +31,7 @@ Base_image<T> rotate(Base_image<T> image, double phi)
 {
     return [=](Point const point)
     {
-        Point temp = to_polar(point);
+        Point temp = point.is_polar ? point : to_polar(point);
         Point help(temp.first, temp.second - phi, temp.is_polar);
         return std::invoke(image, from_polar(help));
     };
@@ -62,7 +62,10 @@ Base_image<T> circle(Point q, double r, T inner, T outer)
 {
     return [=](Point const point)
     {
-        return distance(q, point) <= r ? inner : outer;
+        Point temp = !point.is_polar ? point : from_polar(point);
+        Point tempq = !q.is_polar ? q : from_polar(q);
+
+        return distance(tempq, temp) <= r ? inner : outer;
     };
 }
 
@@ -71,6 +74,7 @@ Base_image<T> checker(double d, T this_way, T that_way)
 {
     return [=](Point const point)
     {
+
         return static_cast<int>(std::floor((point.first / d)) + std::floor((point.second / d))) % 2 == 0 ? this_way
                                                                                                          : that_way;
     };
@@ -81,7 +85,7 @@ Base_image<T> polar_checker(double d, int n, T this_way, T that_way)
 {
     return [=](Point const point)
     {
-        Point temp = to_polar(point);
+        Point temp = point.is_polar ? point : to_polar(point);
         return static_cast<int>(std::floor(((temp.second * n / 2) / (M_PI)))) % 2 == 0 ?
         checker(d, this_way, that_way)(temp) : checker(d, that_way, this_way)(temp);
 
@@ -93,7 +97,9 @@ Base_image<T> rings(Point q, double d, T this_way, T that_way)
 {
     return [=](Point const point)
     {
-        return static_cast<int>(distance(q, point) / d) % 2 == 0 ? this_way : that_way;
+        Point temp = !point.is_polar ? point : from_polar(point);
+        Point tempq = !q.is_polar ? q : from_polar(q);
+        return static_cast<int>(distance(tempq, temp) / d) % 2 == 0 ? this_way : that_way;
     };
 }
 
