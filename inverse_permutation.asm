@@ -10,34 +10,37 @@ inverse_permutation:
     cmp    rdi,rax
     jge bad
 
-
+    mov r8, rdi
+    mov r9, rsi
+    mov rdi, 0x80000000
+    mov rsi, 0x7fffffff
     xor    edx,edx ; i = 0
 
 sprawdz_petla:
-    movsxd rax, DWORD [rsi+rdx*4] ; rax = p[i]
+    movsxd rax, DWORD [r9+rdx*4] ; rax = p[i]
     cmp   eax, 0              ; if (p[i] < 0) return false
     js    bad
-    cmp    rax,rdi             ; if (p[i] > n) return false
+    cmp    rax,r8             ; if (p[i] > n) return false
     jae    bad
 
     add    rdx,0x1              ; ++i
-    cmp    rdx,rdi              ; while (i < n)
+    cmp    rdx,r8              ; while (i < n)
     jne sprawdz_petla
 
 
     xor    edx,edx  ; i = 0
 pierwsza_petla:
-    mov    eax, DWORD [rsi+rdx*4] ; eax (dokad) = p[i]
-    and    eax,0x7fffffff          ; eax & 11111111
-    lea    rcx,[rsi+rax*4]         ; rcx = p[dokad]
+    mov    eax, DWORD [r9+rdx*4] ; eax (dokad) = p[i]
+    and    eax, esi          ; eax & 11111111
+    lea    rcx,[r9+rax*4]         ; rcx = p[dokad]
     mov    eax, DWORD [rcx]         ; eax = p[dokad]
     cmp   eax,0                     ; if p[dokad] < 0 
     js    popraw                       ; petla do poprawy a nie od razu bad
 
-    or     eax,0x80000000              ; eax = eax | 1000000000000
-    add    rdx,0x1                      ; ++i;
+    or     eax,edi              ; eax = eax | 1000000000000
     mov    DWORD [rcx],eax              ; p[dokad] = p[dokad] | 1000000000
-    cmp    rdx, rdi                    ;  i < n
+    add    rdx,0x1                      ; ++i;
+    cmp    rdx, r8                    ;  i < n
     jb pierwsza_petla
     jmp odwroc
 
@@ -48,10 +51,10 @@ popraw:
     js     bad      ; imo nie potrzeben
 
 popraw_petla:
-    mov    eax,DWORD  [rsi+rdx*4] ; eax = dokad (p[i])
+    mov    eax,DWORD  [r9+rdx*4] ; eax = dokad (p[i])
     sub    rdx,0x1                ; --i
-    and    eax,0x7fffffff         ; dokad = dokad & 1111111
-    and    DWORD  [rsi+rax*4],0x7fffffff ; p[dokad] = p[dokad] & 111111
+    and    eax,esi         ; dokad = dokad & 1111111
+    and    DWORD  [r9+rax*4],esi ; p[dokad] = p[dokad] & 111111
     test   edx,edx                      ; if (i >= 0)
     jns    popraw_petla
     jmp bad
@@ -61,8 +64,7 @@ odwroc:
 
 
     xor    edx,edx  ; i = 0
-    mov r8, rdi
-    mov r9, rsi
+
 odwroc_petla:
 
         ; if (p[i] < 0) 
@@ -73,13 +75,13 @@ odwroc_petla:
 
     mov rcx, rdx    ; poprzedni = i
     mov eax, DWORD [r9+4*rdx] ; eax = p[i]
-    and eax, 0x7fffffff ;eax = eax & 1111
+    and eax, esi ;eax = eax & 1111
     mov edx, eax ; i = p[i]
 
 
 petla_w_petli:
     mov edi, [r9+4*rdx] ; temp = p[i]
-    and edi, 0x7fffffff ; temp = temp & 111111
+    and edi, esi ; temp = temp & 111111
     mov DWORD [r9+4*rdx], ecx ; p[i] = poprzedni
     mov ecx, edx ; poprzedni = i
     mov edx, edi ; i  = temp
