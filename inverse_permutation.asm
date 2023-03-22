@@ -3,25 +3,25 @@ global inverse_permutation
 inverse_permutation:
 
 
-    cmp    rdi,0
+    cmp    edi,0        ; if (n <= 0) return false
     jle bad
 
-    mov    rax,0x80000000
+    mov    rax,0x80000001   ; if (n > INT_MAX) return false
     cmp    rdi,rax
-    jae bad
+    jge bad
 
 
-    xor    rdx,rdx ; i = 0
+    xor    edx,edx ; i = 0
 
 sprawdz_petla:
     movsxd rax, DWORD [rsi+rdx*4] ; rax = p[i]
-    cmp   eax, 0              ; eax > 0
+    cmp   eax, 0              ; if (p[i] < 0) return false
     js    bad
-    cmp    rax,rdi             ; eax < n
+    cmp    rax,rdi             ; if (p[i] > n) return false
     jae    bad
 
-    add    rdx,0x1
-    cmp    rdx,rdi
+    add    rdx,0x1              ; ++i
+    cmp    rdx,rdi              ; while (i < n)
     jne sprawdz_petla
 
 
@@ -80,29 +80,26 @@ odwroc_petla:
 petla_w_petli:
     mov edi, [r9+4*rdx] ; temp = p[i]
     and edi, 0x7fffffff ; temp = temp & 111111
-    mov DWORD [r9+4*rdx], ecx
-    mov ecx, edx
-    mov edx, edi
+    mov DWORD [r9+4*rdx], ecx ; p[i] = poprzedni
+    mov ecx, edx ; poprzedni = i
+    mov edx, edi ; i  = temp
 
-    mov eax, [r9+4*rdx]
-    cmp eax, 0
+    mov eax, [r9+4*rdx] ; eax = p[i]
+    cmp eax, 0 ; while (p[i] < 0)
     jl petla_w_petli
 
-    mov edx, ecx
+    mov edx, ecx ; i = poprzedni
 
 petla_zakonczeni:
     add    rdx,0x1                      ; ++i;
 
-    cmp rdx, r8
+    cmp rdx, r8                 ; while (i < n)
     jb odwroc_petla
-    jmp end
-
-
-
-bad:
-    xor eax, eax
-    ret
 
 end:
     mov eax, 0x1
+    ret
+
+bad:
+    xor eax, eax
     ret
