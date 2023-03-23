@@ -47,11 +47,12 @@ odwroc:
 ; ze jeszcze nie zostala odwrucona.
 odwroc_petla:
         mov     eax, [rsi+4*rdx]        ; eax = p[i]
-        test     eax, eax                  ; if (p[i] < 0) nie odwrocony element
+        test    eax, eax                ; if (p[i] < 0) nie odwrocony element
         jns     petla_zakonczeni
+
+; odwracam caly cykl w ktorym jest i ty element.
         mov     ecx, edx                ; poprzedni = i
-        mov     eax, DWORD [rsi+4*rdx]  ; eax = p[i]
-        and     eax, r9d                ; eax = eax & 1111
+        and     eax, r9d                ; pozbywam sie oznaczenia
         mov     edx, eax                ; i = p[i]
 
 petla_w_petli:
@@ -70,21 +71,23 @@ petla_zakonczeni:
         cmp     edx, edi                ; while (i < n)
         jb      odwroc_petla
 
-end:
+end:                                    ; return true
         mov     eax, 0x1
         ret
 
+; tablica nie zawiera poprawnej permutacji. Musze przywrocic ja do stanu
+; poczatkowego
 popraw:
         dec     edx
 
 popraw_petla:
-        mov     eax, DWORD  [rsi+rdx*4] ; eax = dokad (p[i])
-        and     eax, r9d                ; dokad = dokad & 1111111
-        and     DWORD  [rsi+rax*4], r9d ; p[dokad] = p[dokad] & 111111
+        mov     eax, DWORD  [rsi+rdx*4] ; eax = p[i]
+        and     eax, r9d                ; pozbywam sie oznaczenia
+        and     DWORD  [rsi+rax*4], r9d ; pozbywam sie oznaczenia w p[p[i]]
         dec     edx                     ; --i
         test    edx, edx                ; if (i >= 0)
         jns     popraw_petla
 
-bad:
+bad:                                    ; return false
         xor     eax, eax
         ret
