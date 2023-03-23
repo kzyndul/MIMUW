@@ -4,13 +4,15 @@ global inverse_permutation
 inverse_permutation:
         cmp     edi,0                   ; if (n <= 0) return false
         jle     bad
-        mov     rax,0x80000000          ; if (n > INT_MAX) return false
-        cmp     rdi,rax
-        jg      bad
+
         mov     r8, rdi
         mov     r9, rsi
         mov     rdi, 0x80000000
         mov     rsi, 0x7fffffff
+
+        cmp     r8,rdi                  ; if (n > INT_MAX) return false
+        jg      bad
+
 
         xor     edx,edx ; i = 0
 sprawdz_petla:
@@ -36,18 +38,6 @@ pierwsza_petla:
         add     rdx,0x1                 ; ++i;
         cmp     rdx, r8                 ; i < n
         jb      pierwsza_petla
-        jmp     odwroc
-popraw:
-        sub     rdx,0x1
-        js      bad                     ; imo nie potrzeben
-popraw_petla:
-        mov     eax,DWORD  [r9+rdx*4]   ; eax = dokad (p[i])
-        sub     rdx,0x1                 ; --i
-        and     eax,esi                 ; dokad = dokad & 1111111
-        and     DWORD  [r9+rax*4],esi   ; p[dokad] = p[dokad] & 111111
-        test    edx,edx                 ; if (i >= 0)
-        jns     popraw_petla
-        jmp     bad
 
 odwroc:
         xor     edx,edx                 ; i = 0
@@ -79,6 +69,18 @@ petla_zakonczeni:
 end:
         mov     eax, 0x1
         ret
+
+popraw:
+        sub     rdx,0x1
+        js      bad                     ; imo nie potrzeben
+
+popraw_petla:
+        mov     eax,DWORD  [r9+rdx*4]   ; eax = dokad (p[i])
+        sub     rdx,0x1                 ; --i
+        and     eax,esi                 ; dokad = dokad & 1111111
+        and     DWORD  [r9+rax*4],esi   ; p[dokad] = p[dokad] & 111111
+        test    edx,edx                 ; if (i >= 0)
+        jns     popraw_petla
 
 bad:
         xor     eax, eax
