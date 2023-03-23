@@ -15,10 +15,10 @@ sprawdz_petla:
         mov     eax, DWORD [r9+rdx*4]   ; rax = p[i]
         test    eax, eax                ; if (p[i] < 0) return false
         js      bad
-        cmp     rax, r8                 ; if (p[i] > n) return false
+        cmp     eax, r8d                ; if (p[i] > n) return false
         jae     bad
         inc     edx                     ; ++i
-        cmp     rdx, r8                 ; while (i < n)
+        cmp     edx, r8d                ; while (i < n)
         jne     sprawdz_petla
 
         xor     edx,edx                 ; i = 0
@@ -32,7 +32,7 @@ pierwsza_petla:
         or      eax, edi                ; eax = eax | 1000000000000
         mov     DWORD [rcx], eax        ; p[dokad] = p[dokad] | 1000000000
         inc     edx                     ; ++i;
-        cmp     rdx, r8                 ; i < n
+        cmp     edx, r8d                ; i < n
         jb      pierwsza_petla
 
 odwroc:
@@ -59,7 +59,7 @@ petla_w_petli:
 
 petla_zakonczeni:
         inc     edx                     ; ++i;
-        cmp     rdx, r8                 ; while (i < n)
+        cmp     edx, r8d                ; while (i < n)
         jb      odwroc_petla
 
 end:
