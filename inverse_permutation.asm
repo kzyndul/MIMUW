@@ -1,7 +1,7 @@
 global inverse_permutation
 inverse_permutation:
-        cmp     edi, 0                  ; if (n <= 0) return false
-        jle     bad
+        test    edi, edi                ; if (n <= 0) return false
+        js      bad
 
         mov     r8, rdi
         mov     r9, rsi
@@ -10,15 +10,14 @@ inverse_permutation:
         cmp     r8, rdi                 ; if (n > INT_MAX) return false
         jg      bad
 
-
-        xor     edx,edx ; i = 0
+        xor     rdx, rdx                ; i = 0
 sprawdz_petla:
-        movsxd  rax, DWORD [r9+rdx*4]   ; rax = p[i]
-        cmp     eax, 0                  ; if (p[i] < 0) return false
+        mov     eax, DWORD [r9+rdx*4]   ; rax = p[i]
+        test    eax, eax                ; if (p[i] < 0) return false
         js      bad
         cmp     rax, r8                 ; if (p[i] > n) return false
         jae     bad
-        add     rdx, 0x1                ; ++i
+        inc     edx                     ; ++i
         cmp     rdx, r8                 ; while (i < n)
         jne     sprawdz_petla
 
@@ -28,11 +27,11 @@ pierwsza_petla:
         and     eax, esi                ; eax & 11111111
         lea     rcx, [r9+rax*4]         ; rcx = p[dokad]
         mov     eax, DWORD [rcx]        ; eax = p[dokad]
-        cmp     eax, 0                  ; if p[dokad] < 0
+        test    eax, eax                ; if p[dokad] < 0
         js      popraw                  ; petla do poprawy a nie od razu bad
         or      eax, edi                ; eax = eax | 1000000000000
         mov     DWORD [rcx], eax        ; p[dokad] = p[dokad] | 1000000000
-        add     rdx, 0x1                ; ++i;
+        inc     edx                     ; ++i;
         cmp     rdx, r8                 ; i < n
         jb      pierwsza_petla
 
@@ -59,7 +58,7 @@ petla_w_petli:
         mov     edx, ecx                ; i = poprzedni
 
 petla_zakonczeni:
-        add     rdx, 0x1                ; ++i;
+        inc     edx                     ; ++i;
         cmp     rdx, r8                 ; while (i < n)
         jb      odwroc_petla
 
@@ -68,14 +67,13 @@ end:
         ret
 
 popraw:
-        sub     rdx, 0x1
-        js      bad                     ; imo nie potrzeben
+        dec     edx
 
 popraw_petla:
         mov     eax, DWORD  [r9+rdx*4]  ; eax = dokad (p[i])
-        sub     rdx, 0x1                ; --i
         and     eax, esi                ; dokad = dokad & 1111111
         and     DWORD  [r9+rax*4], esi  ; p[dokad] = p[dokad] & 111111
+        dec     edx                     ; --i
         test    edx, edx                ; if (i >= 0)
         jns     popraw_petla
 
