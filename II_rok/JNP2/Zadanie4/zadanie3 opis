@@ -1,0 +1,18 @@
+W pliku Zadanie3.py jest zmieniony kod generatora bez "skip connections". Niestety nie jestem w stanie porównać modeli,
+ponieważ po wytrenowaniu modelu bez "skip connections" dostaje komunikat "You cannot currently connect to a GPU due
+to usage limits in Colab.". Z dwóch powodów nie pokażę wszystkich wygenerowanych przez sieć obrazków. Po pierwsze sieć
+generowała ten sam obrazem bez względu na dane wejściowe. Po drugie po odejściu od komputera na około jedną godzine google colab
+usunał wszystkie dane z mojej sesji. Poza tym nie jestem pewny czy model wytrenował się poprawnie, ponieważ co 140 epoko
+byłe wylogowywany z sesji na google colabie i musiałem zaczynać naukę od ostatniego checkpointu.
+
+
+Wnioski "skip connections":
+    - Mogą przyspieszyć proces uczenia sieci.
+    - Zmniejszają ryzyko wystąpienia znikającego gradientu.
+    - Zmniejszają utratę informacji podczas kompresji.
+    - Umożliwiają sieci uchwycenie zarówno lokalnych jak i globalnych cechy obrazów.
+
+Po 100 epokach w modelu z "skip connections" model generował obrazki, które tam gdzie nie było chmury wyglądały jak orginał,
+a tam gdzie była chmura była zielona plama. Z tego wynikało by, że dzięki "skip connections" model nie tracił informacji
+podczas kompresji, dzięki czemu fragmenty obrazka nie były przysłanięte chmurami są identyczne. Model bez "skip connections"
+traci tę informację dlatego generuje na nowo cały obrazek.

@@ -1,0 +1,117 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl-PL">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, charset='utf-8'">
+    <title>Projekt z AWW</title>
+    <link rel="stylesheet" href="{% static 'polls/css/homePage.css' %}">
+    <script src="{% static 'polls/js/global.js' %}"></script>
+    <script src="{% static 'polls/js/compiler.js' %}"></script>
+    <script src="{% static 'polls/js/file.js' %}"></script>
+    <script src="{% static 'polls/js/directory.js' %}"></script>
+    <script src="{% static 'polls/js/fileSection.js' %}"></script>
+
+
+</head>
+
+<body class="white">
+
+<div class="pasekOpcji">
+    <div class="dropdown">
+        <button>Plik</button>
+        <div class="dropdown-content">
+            <button onclick="showFlieCreate()">Dodaj plik</button>
+            <button onclick="deleteFile()">Usun plik</button>
+        </div>
+    </div>
+
+    <div class="dropdown">
+        <button>Folder</button>
+        <div class="dropdown-content">
+            <button onclick="showDirectoryCreate()">Dodaj folder</button>
+            <button onclick="deleteDirectory()">Usun folder</button>
+        </div>
+    </div>
+    <div class="dropdown">
+        <button onclick="handleSubmitCompile(event)">Kompiluj</button>
+    </div>
+</div>
+
+
+<div class="grid-container">
+    <div class="bocznyPasek">
+        <ul>
+            {% for directory_files in db_files %}
+                {% if directory_files.0.visibility %}
+                    <li>
+                        <button class="selectButton"
+                                onclick="selectDirectory({{ directory_files.0.id }})"> {{ directory_files.0.name }} </button>
+                        <ul>
+                            {% for file in directory_files.1 %}
+                                {% if file.visibility %}
+                                    <li>
+                                        <button class="selectButton"
+                                                onclick="selectFile({{ file.id }})"> {{ file.name }} </button>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="glowneOkno">
+        {% for line in file %}
+            <div>
+                {% if line != "" %}
+                    <pre id="code-container">{{ line }}</pre>
+                {% else %}
+                    <br/>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+
+    <div class="fragmentKodu">
+        <div>
+            <button class="selectButton" onclick="showFileSectionCreate()">Dodaj sekcje</button>
+            <button class="fileSectionButtonAll"
+                    onclick="hideAllSectionInformation(this)">Hide all
+            </button>
+        </div>
+
+        {% for section in sectionList %}
+            <br>
+            <div>
+                <button class="fileSectionButtonHighlight"
+                        onclick="highlightSection({{ section.begin }}, {{ section.end }})">{{ section.sectionType }} {{ section.begin }} {{ section.end }}</button>
+                <button class="fileSectionButtonHide"
+                        onclick="hideSectionInformation(this)">Hide info
+                </button>
+                <div class="section_information">
+                    {{ section.sectionStatus }} {{ section.sectionData }}
+                    <button class="selectButton" onclick="deleteFileSection({{ section.pk }})">delete</button>
+                </div>
+            </div>
+
+        {% endfor %}
+    </div>
+
+
+    <div class="listaTabow">
+        <button class="tablinks" data-tabid="tab1" onclick="showTab('tab1')">STANDARD</button>
+        <button class="tablinks" data-tabid="tab2" onclick="showTab('tab2')">OPTYMALIZACJE</button>
+        <button class="tablinks" data-tabid="tab3" onclick="showTab('tab3')">PROCESOR</button>
+        <button class="tablinks" data-tabid="tab4" onclick="showTab('tab4')">ZALEŻNE</button>
+    </div>
+
+    {% include 'polls/forms.html' %}
+
+
+</div>
+</body>
+</html>

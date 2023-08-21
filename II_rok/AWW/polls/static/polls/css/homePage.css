@@ -1,0 +1,335 @@
+:root {
+    --wysokoscPaskaOpcji: 50px;
+}
+
+pre {
+    display: block;
+    /*width: auto;*/
+    /*max-height: 600px;*/
+    /*overflow: auto;*/
+    /*background-color: #eee;*/
+    /*border-radius: 10px;*/
+    /*border: 1px solid;*/
+    /*border-color: var(--cassiopeia-color-primary, #111 );*/
+    scrollbar-color: #ccc transparent;
+    margin: unset;
+    /*padding: 0px;*/
+    word-wrap: normal;
+}
+
+.white {
+    /* --pasekOpcji-background-color: #7070db; */
+    --bocznyPasek-background-color: #00ffcc;
+    --glowneOkno-background-color: #ffb380;
+    --fragmentKodu-background-color: #006622;
+    --listaTabow-background-color: #ad3400;
+
+    --listaTabow-background-color-button: #ad3400;
+    --listaTabow-background-color-button-hover: #f84b00;
+    --tekstTaby-background-color: #AF9D08BF;
+
+    --pasekOpcjiNav-background-color: #333;
+    --pasekOpcjiNav-button-color: #928f8f;
+    --pasekOpcjiNav-button-hover-color: #473f3f;
+
+
+    --czcionkaPaski-color: #fff;
+}
+
+.black {
+    /* --pasekOpcji-background-color: #2323d7; */
+    --bocznyPasek-background-color: #5e3c02;
+    --glowneOkno-background-color: #7e4323;
+    --fragmentKodu-background-color: #28544e;
+    --listaTabow-background-color: #231111;
+
+    --listaTabow-background-color-button: #231111;
+    --listaTabow-background-color-button-hover: #603a3a;
+    --tekstTaby-background-color: rgba(56, 1, 117, 0.75);
+
+    --pasekOpcjiNav-background-color: #01047e;
+    --pasekOpcjiNav-button-color: rgb(1, 4, 126);
+    --pasekOpcjiNav-button-hover-color: rgba(0, 5, 234, 0.38);
+
+
+    --czcionkaPaski-color: #fff;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    margin: 0;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-areas:
+        "bocznyPasek"
+        "glowneOkno"
+        "fragmentKodu"
+        "listaTabow"
+        "tekstTaby";
+    grid-template-columns: 100%;
+    grid-template-rows: 15% 49% 18% 5% 13%;
+    width: 100vw;
+    height: calc(100vh - var(--wysokoscPaskaOpcji));
+}
+
+.grid-container > div {
+    font-size: 100%;
+    text-align: left;
+    overflow: auto;
+    width: 100%;
+    height: 100%;
+}
+
+
+.bocznyPasek {
+    background-color: var(--bocznyPasek-background-color);
+    grid-area: bocznyPasek;
+}
+
+.bocznyPasek ul {
+    list-style-type: none;
+}
+
+
+.glowneOkno {
+    grid-area: glowneOkno;
+    background-color: var(--glowneOkno-background-color);
+}
+
+
+.fragmentKodu {
+    grid-area: fragmentKodu;
+    font-size: 20px;
+    background-color: var(--fragmentKodu-background-color)
+}
+
+
+.listaTabow {
+    grid-area: listaTabow;
+    background-color: var(--listaTabow-background-color);
+    font-size: 30px;
+    font-weight: bold;
+    text-align: left;
+
+    display: flex;
+    justify-content: left;
+    align-items: normal;
+}
+
+
+.tekstTaby {
+    grid-area: tekstTaby;
+    background-color: var(--tekstTaby-background-color)
+}
+
+
+.listaTabow > button:hover {
+    background-color: var(--listaTabow-background-color-button-hover);
+}
+
+
+.listaTabow > button {
+    background-color: var(--listaTabow-background-color);
+    font-size: 100%;
+    padding: 0 4%;
+}
+
+/* .dropdown button, */
+.listaTabow button {
+    border: none;
+    color: var(--czcionkaPaski-color);
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    height: 100%;
+    box-sizing: border-box;
+
+}
+
+/* .pasekOpcjiNav button:focus, */
+.listaTabow button:focus {
+    outline: none;
+}
+
+
+.pasekOpcji {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: var(--wysokoscPaskaOpcji);
+    background-color: var(--pasekOpcjiNav-background-color);
+}
+
+
+.dropdown {
+    height: 100%;
+    position: relative;
+    display: inline-block;
+    flex-grow: 1;
+}
+
+.dropdown button {
+
+    background-color: var(--pasekOpcjiNav-background-color);
+    color: var(--czcionkaPaski-color);
+    font-size: 200%;
+
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    height: 100%;
+    width: 100%;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--pasekOpcjiNav-button-hover-color);
+    width: 100%;
+    z-index: 1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown > button:hover {
+    background-color: var(--pasekOpcjiNav-button-hover-color);
+}
+
+.dropdown-content a {
+    color: #000;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: var(--pasekOpcjiNav-button-color);
+}
+
+.fileSectionButtonHide {
+    border: none;
+    background-color: inherit;
+    font-size: inherit;
+    white-space: nowrap;
+}
+
+.fileSectionButtonAll {
+    border: none;
+    background-color: inherit;
+    font-size: inherit;
+    white-space: nowrap;
+}
+
+.fileSectionButtonHighlight {
+    border: none;
+    background-color: inherit;
+    font-size: inherit;
+    white-space: nowrap;
+}
+
+
+@media (min-width: 1024px) and (aspect-ratio: 4/3),
+(min-aspect-ratio: 16/9) and (min-width: 1280px) {
+    :root {
+        --wysokoscPaskaOpcji: 75px;
+    }
+
+    .grid-container {
+        grid-template-areas:
+            "bocznyPasek glowneOkno"
+            "fragmentKodu fragmentKodu"
+            "listaTabow listaTabow"
+            "tekstTaby tekstTaby";
+
+        grid-template-columns: 20% 80%;
+        grid-template-rows: 65% 15% 5% 15%;
+    }
+
+}
+
+
+@media (min-width: 1600px) and (min-aspect-ratio: 4/3),
+(min-aspect-ratio: 16/9) and (min-width: 1920px) {
+    :root {
+        --wysokoscPaskaOpcji: 100px;
+    }
+
+    .grid-container {
+        grid-template-areas:
+            "bocznyPasek glowneOkno fragmentKodu"
+            "bocznyPasek listaTabow listaTabow"
+            "bocznyPasek tekstTaby tekstTaby";
+
+        grid-template-columns: 20% 55% 25%;
+        grid-template-rows: 70% 6% 24%;
+    }
+
+    .grid-container > div {
+        font-size: 180%;
+    }
+
+    .pasekOpcjiNav {
+        font-size: 170%;
+    }
+}
+
+
+.popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    height: auto;
+    background-color: #ffffff;
+    border: 1px solid #000000;
+    border-radius: 5px;
+    padding: 20px;
+    display: block;
+    z-index: 9999; /* Make the pop-up box on top of everything */
+}
+
+.createFile {
+    display: none;
+    z-index: 9999; /* Make the pop-up box on top of everything */
+}
+
+.createDirectory {
+    display: none;
+    z-index: 9999; /* Make the pop-up box on top of everything */
+}
+
+.createFileSection {
+    display: none;
+    z-index: 9999; /* Make the pop-up box on top of everything */
+}
+
+#tab2 {
+    display: none;
+}
+
+#tab3 {
+    display: none;
+}
+
+#tab4 {
+    display: none;
+}
+
+.selectButton {
+    border: none;
+    background-color: inherit;
+    font-size: inherit;
+    white-space: nowrap;
+}

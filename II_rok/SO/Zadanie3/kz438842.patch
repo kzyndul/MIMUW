@@ -1,0 +1,231 @@
+diff -rupNEZbB clean/usr/include/minix/callnr.h modified/usr/include/minix/callnr.h
+--- clean/usr/include/minix/callnr.h	2014-09-14 11:00:44.000000000 +0200
++++ modified/usr/include/minix/callnr.h	2023-05-10 23:50:16.000000000 +0200
+@@ -58,8 +58,9 @@
+ #define PM_GETEPINFO		(PM_BASE + 45)
+ #define PM_GETPROCNR		(PM_BASE + 46)
+ #define PM_GETSYSINFO		(PM_BASE + 47)
++#define PM_TRANSFER_MONEY		(PM_BASE + 48)
+ 
+-#define NR_PM_CALLS		48	/* highest number from base plus one */
++#define NR_PM_CALLS		49	/* highest number from base plus one */
+ 
+ /*===========================================================================*
+  *				Calls to VFS				     *
+diff -rupNEZbB clean/usr/include/minix/config.h modified/usr/include/minix/config.h
+--- clean/usr/include/minix/config.h	2014-09-14 11:00:44.000000000 +0200
++++ modified/usr/include/minix/config.h	2023-05-11 22:50:13.000000000 +0200
+@@ -95,4 +95,8 @@
+ #define NR_PCIBUS 40
+ #define NR_PCIDEV 50
+ 
++#define INIT_BALANCE 100
++#define MAX_BALANCE 1000
++
+ #endif /* _CONFIG_H */
++
+diff -rupNEZbB clean/usr/include/minix/ipc.h modified/usr/include/minix/ipc.h
+--- clean/usr/include/minix/ipc.h	2014-09-14 11:00:44.000000000 +0200
++++ modified/usr/include/minix/ipc.h	2023-05-12 15:08:12.000000000 +0200
+@@ -14,6 +14,14 @@
+ #define M_PATH_STRING_MAX  40
+ 
+ typedef struct {
++    pid_t pid;
++    int amount;
++
++    uint8_t padding[48];
++} mess_lc_pm_transfermoney;
++_ASSERT_MSG_SIZE(mess_lc_pm_transfermoney);
++
++typedef struct {
+ 	uint8_t data[56];
+ } mess_u8;
+ _ASSERT_MSG_SIZE(mess_u8);
+@@ -2027,6 +2035,7 @@ typedef struct {
+ 	endpoint_t m_source;		/* who sent the message */
+ 	int m_type;			/* what kind of message is it */
+ 	union {
++        mess_lc_pm_transfermoney    m_lc_pm_transfermoney;
+ 		mess_u8			m_u8;
+ 		mess_u16		m_u16;
+ 		mess_u32		m_u32;
+diff -rupNEZbB clean/usr/include/unistd.h modified/usr/include/unistd.h
+--- clean/usr/include/unistd.h	2014-09-14 11:00:43.000000000 +0200
++++ modified/usr/include/unistd.h	2023-05-14 17:58:45.000000000 +0200
+@@ -143,6 +143,7 @@ int	 tcsetpgrp(int, pid_t);
+ __aconst char *ttyname(int);
+ int	 unlink(const char *);
+ ssize_t	 write(int, const void *, size_t);
++int transfermoney(pid_t, int);
+ 
+ 
+ /*
+diff -rupNEZbB clean/usr/src/lib/libc/misc/Makefile.inc modified/usr/src/lib/libc/misc/Makefile.inc
+--- clean/usr/src/lib/libc/misc/Makefile.inc	2014-09-13 23:56:50.000000000 +0200
++++ modified/usr/src/lib/libc/misc/Makefile.inc	2023-05-11 21:51:52.000000000 +0200
+@@ -7,4 +7,4 @@
+ SRCS+=	initfini.c
+ 
+ # for -fstack-protector
+-SRCS+=	stack_protector.c
++SRCS+=	stack_protector.c transfermoney.c
+diff -rupNEZbB clean/usr/src/lib/libc/misc/transfermoney.c modified/usr/src/lib/libc/misc/transfermoney.c
+--- clean/usr/src/lib/libc/misc/transfermoney.c	1970-01-01 01:00:00.000000000 +0100
++++ modified/usr/src/lib/libc/misc/transfermoney.c	2023-05-12 14:54:36.000000000 +0200
+@@ -0,0 +1,21 @@
++#include <lib.h>
++#include <minix/rs.h>
++
++int get_pm_endpt(endpoint_t *pt)
++{
++    return minix_rs_lookup("pm", pt);
++}
++
++int transfermoney(pid_t recipient, int amount)
++{
++    endpoint_t pm_ep;
++    message m;
++    if (get_pm_endpt(&pm_ep) != 0)
++    {
++        errno = ENOSYS;
++        return -1;
++    }
++    m.m_lc_pm_transfermoney.pid = recipient;
++    m.m_lc_pm_transfermoney.amount = amount;
++    return _syscall(pm_ep, PM_TRANSFER_MONEY, &m);
++}
+diff -rupNEZbB clean/usr/src/minix/servers/pm/do_transfer_money.c modified/usr/src/minix/servers/pm/do_transfer_money.c
+--- clean/usr/src/minix/servers/pm/do_transfer_money.c	1970-01-01 01:00:00.000000000 +0100
++++ modified/usr/src/minix/servers/pm/do_transfer_money.c	2023-05-12 17:55:00.000000000 +0200
+@@ -0,0 +1,48 @@
++#include "pm.h"
++#include "mproc.h"
++#include <stdio.h>
++
++int is_relative(pid_t child, pid_t ancestor)
++{
++    register struct mproc *help;
++    help = find_proc(child);
++    pid_t last_pid = -1;
++    while (help != NULL && (help->mp_flags & IN_USE) && help->mp_pid != 
++last_pid)
++    {
++        if (help->mp_pid == ancestor)
++        {
++            return 1;
++        }
++        last_pid = help->mp_pid;
++        help = &mproc[help->mp_parent];
++    }
++    return 0;
++}
++
++
++int do_transfer_money(void)
++{
++    pid_t pid_receiver = m_in.m_lc_pm_transfermoney.pid;
++    int amount = m_in.m_lc_pm_transfermoney.amount;
++    register struct mproc *receiver = find_proc(pid_receiver);
++    if (receiver == NULL)
++    {
++        return(ESRCH);
++    }
++
++    if (mp->mp_pid != pid_receiver && (is_relative(mp->mp_pid, pid_receiver) || is_relative(pid_receiver, mp->mp_pid)))
++    {
++        return(EPERM);
++    }
++
++    if (amount < 0 || mp->balance - amount < 0 || receiver->balance + amount > MAX_BALANCE)
++    {
++        return(EINVAL);
++    }
++
++    receiver->balance += amount;
++    mp->balance -= amount;
++
++    return mp->balance;
++}
+diff -rupNEZbB clean/usr/src/minix/servers/pm/forkexit.c modified/usr/src/minix/servers/pm/forkexit.c
+--- clean/usr/src/minix/servers/pm/forkexit.c	2014-09-13 23:56:50.000000000 +0200
++++ modified/usr/src/minix/servers/pm/forkexit.c	2023-05-11 23:39:23.000000000 +0200
+@@ -112,6 +112,7 @@ int do_fork()
+   /* Find a free pid for the child and put it in the table. */
+   new_pid = get_free_pid();
+   rmc->mp_pid = new_pid;	/* assign pid to child */
++  rmc->balance = INIT_BALANCE;
+ 
+   memset(&m, 0, sizeof(m));
+   m.m_type = VFS_PM_FORK;
+@@ -204,6 +205,7 @@ int do_srv_fork()
+   /* Find a free pid for the child and put it in the table. */
+   new_pid = get_free_pid();
+   rmc->mp_pid = new_pid;	/* assign pid to child */
++  rmc->balance = INIT_BALANCE;
+ 
+   memset(&m, 0, sizeof(m));
+   m.m_type = VFS_PM_SRV_FORK;
+diff -rupNEZbB clean/usr/src/minix/servers/pm/main.c modified/usr/src/minix/servers/pm/main.c
+--- clean/usr/src/minix/servers/pm/main.c	2014-09-13 23:56:50.000000000 +0200
++++ modified/usr/src/minix/servers/pm/main.c	2023-05-14 12:58:26.000000000 +0200
+@@ -146,6 +146,7 @@ static int sef_cb_init_fresh(int UNUSED(
+   /* Initialize process table, including timers. */
+   for (rmp=&mproc[0]; rmp<&mproc[NR_PROCS]; rmp++) {
+ 	init_timer(&rmp->mp_timer);
++	rmp->balance = INIT_BALANCE;
+ 	rmp->mp_magic = MP_MAGIC;
+   }
+ 
+@@ -214,6 +215,7 @@ static int sef_cb_init_fresh(int UNUSED(
+ 
+ 		/* Get kernel endpoint identifier. */
+ 		rmp->mp_endpoint = ip->endpoint;
++		rmp->balance = INIT_BALANCE;
+ 
+ 		/* Tell VFS about this system process. */
+ 		memset(&mess, 0, sizeof(mess));
+diff -rupNEZbB clean/usr/src/minix/servers/pm/Makefile modified/usr/src/minix/servers/pm/Makefile
+--- clean/usr/src/minix/servers/pm/Makefile	2014-09-13 23:56:50.000000000 +0200
++++ modified/usr/src/minix/servers/pm/Makefile	2023-05-11 00:00:59.000000000 +0200
+@@ -4,7 +4,7 @@
+ PROG=	pm
+ SRCS=	main.c forkexit.c exec.c time.c alarm.c \
+ 	signal.c utility.c table.c trace.c getset.c misc.c \
+-	profile.c mcontext.c schedule.c
++	profile.c mcontext.c schedule.c do_transfer_money.c
+ 
+ DPADD+=	${LIBSYS} ${LIBTIMERS}
+ LDADD+=	-lsys -ltimers
+diff -rupNEZbB clean/usr/src/minix/servers/pm/mproc.h modified/usr/src/minix/servers/pm/mproc.h
+--- clean/usr/src/minix/servers/pm/mproc.h	2014-09-13 23:56:50.000000000 +0200
++++ modified/usr/src/minix/servers/pm/mproc.h	2023-05-11 23:23:15.000000000 +0200
+@@ -70,6 +70,7 @@ EXTERN struct mproc {
+   char mp_name[PROC_NAME_LEN];	/* process name */
+ 
+   int mp_magic;			/* sanity check, MP_MAGIC */
++  int balance;
+ } mproc[NR_PROCS];
+ 
+ /* Flag values */
+diff -rupNEZbB clean/usr/src/minix/servers/pm/proto.h modified/usr/src/minix/servers/pm/proto.h
+--- clean/usr/src/minix/servers/pm/proto.h	2014-09-13 23:56:50.000000000 +0200
++++ modified/usr/src/minix/servers/pm/proto.h	2023-05-11 21:30:54.000000000 +0200
+@@ -89,3 +89,6 @@ struct mproc *find_proc(pid_t lpid);
+ int nice_to_priority(int nice, unsigned *new_q);
+ int pm_isokendpt(int ep, int *proc);
+ void tell_vfs(struct mproc *rmp, message *m_ptr);
++
++/* do_transfer_money.c */
++int do_transfer_money(void);
+diff -rupNEZbB clean/usr/src/minix/servers/pm/table.c modified/usr/src/minix/servers/pm/table.c
+--- clean/usr/src/minix/servers/pm/table.c	2014-09-13 23:56:50.000000000 +0200
++++ modified/usr/src/minix/servers/pm/table.c	2023-05-10 23:46:59.000000000 +0200
+@@ -58,5 +58,6 @@ int (* const call_vec[NR_PM_CALLS])(void
+ 	CALL(PM_EXEC_RESTART)	= do_execrestart,
+ 	CALL(PM_GETEPINFO)	= do_getepinfo,		/* getepinfo(2) */
+ 	CALL(PM_GETPROCNR)	= do_getprocnr,		/* getprocnr(2) */
+-	CALL(PM_GETSYSINFO)	= do_getsysinfo		/* getsysinfo(2) */
++	CALL(PM_GETSYSINFO)	= do_getsysinfo,    /* getsysinfo(2) */
++    CALL(PM_TRANSFER_MONEY) = do_transfer_money
+ };

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pl-PL">
+<head>
+    <title>Error page</title>
+</head>
+<body>
+<h1>Przeslano nie poprawny formularz</h1>
+<div>
+    {{ text }}
+    {% for file in errors %}
+        <ul>
+            <p>
+                błąd w polu "{{ file }}"
+            </p>
+        </ul>
+    {% endfor %}
+</div>
+</body>
+</html>

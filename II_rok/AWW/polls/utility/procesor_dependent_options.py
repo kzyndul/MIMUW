@@ -1,0 +1,2 @@
+procesor_dependent_options = {"mcs51": ["--xstack", "--acall-ajmp", "--no-ret-without-call"], "z80": ["--no-std-crt0", "--callee-saves-bc", "--fno-omit-frame-pointer"],
+                                "stm8": ["--model-medium", "--model-large"]}

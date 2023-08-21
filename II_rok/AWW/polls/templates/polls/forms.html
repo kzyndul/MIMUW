@@ -1,0 +1,98 @@
+<form method="post" id="compileForm">
+    {% csrf_token %}
+    <div id="tab1" class="tabcontent">
+        <label><input type="radio" name="c_language" value=89>C89</label>
+        <label><input type="radio" name="c_language" value=99>C99</label>
+        <label><input type="radio" name="c_language" value=11>C11</label>
+    </div>
+
+    <div id="tab2" class="tabcontent">
+        <label><input type="checkbox" name="optimize" value="--opt-code-size"> Optimize for code size</label><br>
+        <label><input type="checkbox" name="optimize" value="--opt-code-speed"> Optimize for code speed</label><br>
+        <label><input type="checkbox" name="optimize" value="--nolabelopt"> Not optimize labels</label><br>
+    </div>
+
+    <div id="tab3" class="tabcontent">
+        <label><input type="radio" name="procesor" value="mcs51">MCS51</label>
+        <label><input type="radio" name="procesor" value="z80">Z80</label>
+        <label><input type="radio" name="procesor" value="stm8">STM8</label>
+    </div>
+
+    <div id="tab4" class="tabcontent">
+        <div class="mcs51">
+            <label><input type="checkbox" name="dependent" value="--xstack"> Uses a pseudo stack in the
+                __pdata</label><br>
+            <label><input type="checkbox" name="dependent" value="--acall-ajmp"> Replaces the three byte
+                instructions lcall/ljmp</label><br>
+            <label><input type="checkbox" name="dependent" value="--no-ret-without-call"> No ret without
+                call</label><br>
+        </div>
+        <div class="z80">
+            <label><input type="checkbox" name="dependent" value="--no-std-crt0"> When linking, skip the standard
+                crt0.rel object file.</label><br>
+            <label><input type="checkbox" name="dependent" value="--callee-saves-bc"> Force a called function to
+                always save BC.</label><br>
+            <label><input type="checkbox" name="dependent" value="--fno-omit-frame-pointer"> Never omit the frame
+                pointer.</label><br>
+        </div>
+        <div class="stm8">
+            <label><input type="checkbox" name="dependent" value="--model-medium"> Generate code for Medium model
+                programs</label><br>
+            <label><input type="checkbox" name="dependent" value="--model-large"> Generate code for Large model
+                programs</label><br>
+        </div>
+    </div>
+</form>
+
+<div class="createFile">
+    <div class="popup">
+        <h1>Stworz plik<</h1>
+        <form method="POST" enctype="multipart/form-data" id="fileForm">
+            {% csrf_token %}
+            {{ fileForm.as_p }}
+            <button onclick="handleSubmitFile(event)">stwórz</button>
+        </form>
+    </div>
+</div>
+
+<div class="createDirectory">
+    <div class="popup">
+        <h1>Stworz folder<</h1>
+        <form method="POST" enctype="multipart/form-data" id="directoryForm">
+            {% csrf_token %}
+            {{ directoryForm.as_p }}
+            <button onclick="handleSubmitDirectory(event)">stwórz</button>
+        </form>
+    </div>
+</div>
+
+
+<div class="createFileSection">
+    <div class="popup">
+        <h1>Stworz sekcję pliku</h1>
+        <form method="POST" enctype="multipart/form-data" id="fileSectionForm">
+            {% csrf_token %}
+
+            <label for="selectFileName">nazwa</label>
+            <input type="text" id="selectFileName" name="selectFileName" maxlength="200">
+            <br>
+            <label for="selectFileDescription">opis</label>
+            <input type="text" id="selectFileDescription" name="selectFileDescription" maxlength="200">
+            <br>
+
+
+            <label for="sectionTypeForm">rodzaj</label>
+            <select name="sectionTypeForm" id="sectionTypeForm">
+                <option value="procedura">procedura</option>
+                <option value="komentarz">komentarz</option>
+                <option value="dyrektywny kompilatora">dyrektywny kompilatora</option>
+                <option value="deklaraca zmiennej">deklaraca zmiennej</option>
+                <option value="wstawka asemblerowa">wstawka asemblerowa</option>
+            </select>
+
+            <input type="hidden" id="selectedTextFileSection" name="selectedTextFileSection" value="">
+
+            <button onclick="handleSubmitFileSection(event)">stwórz</button>
+        </form>
+    </div>
+</div>
