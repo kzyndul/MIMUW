@@ -1,6 +1,6 @@
 ### Języki i paradygmaty programowania 
 
-<b> JPP MIMUW 2022 </b> <br />
+<b> JPP MIMUW 2024 </b> <br />
 <b> Autor: Krzysztof Żyndul </b> <br />
 
 <b> Oceny
